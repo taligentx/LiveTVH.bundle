@@ -1,0 +1,51 @@
+[
+    {
+        "id":       "tvhAddress",
+        "label":    "tvhAddress",
+        "type":     "text",
+        "default":  "http://localhost:9981"
+    },
+    {
+        "id":       "tvhUser",
+        "label":    "tvhUser",
+        "type":     "text",
+        "default":  ""
+    },
+    {
+        "id":       "tvhPass",
+        "label":    "tvhPass",
+        "type":     "text",
+        "option":   "hidden",
+        "default":  ""
+    },
+    {
+        "id":       "tvhProfile",
+        "label":    "tvhProfile",
+        "type":     "text",
+        "default":  "pass"
+    },
+    {
+        "id":       "prefChannelNumbers",
+        "label":    "prefChannelNumbers",
+        "type":     "bool",
+        "default":  "true"
+    },
+    {
+        "id":       "pref24Time",
+        "label":    "pref24Time",
+        "type":     "bool",
+        "default":  "true"
+    },
+    {
+        "id":       "prefEPGCount",
+        "label":    "prefEPGCount",
+        "type":     "text",
+        "default":  "3"
+    },
+    {
+        "id":       "prefMetadata",
+        "label":    "prefMetadata",
+        "type":     "bool",
+        "default":  "true"
+    }
+]

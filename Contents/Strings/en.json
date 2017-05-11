@@ -1,0 +1,12 @@
+{
+    "preferences":              "Preferences",
+    "channelsUnavailable":      "No channels available, verify settings.",
+    "tvhAddress":               "Tvheadend address:port (with webroot if applicable):",
+    "tvhUser":                  "Username:",
+    "tvhPass":                  "Password:",
+    "tvhProfile":               "Streaming profile:",
+    "prefChannelNumbers":       "Display channel numbers",
+    "pref24Time":               "Display 24-hour time",
+    "prefEPGCount":             "Number of hours/entries of upcoming shows to display:",
+    "prefMetadata":             "Display artwork and metadata from theTVDB and The Movie DB"
+}
