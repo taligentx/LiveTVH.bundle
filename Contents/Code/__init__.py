@@ -282,7 +282,7 @@ def channel(title, uuid, thumb, fallbackThumb, art, summary, tagline, source_tit
                     )
                 ],
                 container = 'mpegts',
-                optimized_for_streaming = False
+                optimized_for_streaming = True
             )
         ]
     )
