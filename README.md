@@ -1,10 +1,20 @@
 # LiveTVH.bundle
 LiveTVH provides live TV streaming for [Plex](https://plex.tv) via [Tvheadend](https://tvheadend.org), including metadata from Tvheadend's EPG, [theTVDB](https://thetvdb.com), and [The Movie DB](https://www.themoviedb.org).
 
+## Features
+* EPG displayed as a simple list within each channel description, with a configurable time period to display in 12/24 hour time.
+* Metadata and artwork lookup from theTVDB and The Movie DB, with asynchronous searches and loading to minimize channel list load times.  If available through Tvheadend's EPG, searching theTVDB utilizes zap2it ID information for more exact matches and will fall back to searching by name if not available.
+* Customized for different clients to display metadata more efficiently - Plex clients vary quite a bit in which fields they choose to display!
+* Search results, metadata, and artwork caching - again, to minimize channel list load times.
+* Tvheadend authentication info stored in HTTP headers where possible instead of being sent in the URL - this prevents the Tvheadend username and password from showing up in the Plex log files, for example.
+* Tvheadend stream URL checking for availability prior to sending the stream to the client - this prevents long timeouts on the client if Tvheadend does not have an available tuner.  This also sends the stream URL as an indirect object to Plex, which prevents the Tvheadend username and password from showing up in the Plex XML file.  
+
+  However, if the stream is direct played instead of running through the Plex Transcoder, the client will receive the username and password as part of the stream URL and show up in the clear in the client logs as Plex does not seem to support sending headers as part of the stream object.
+
+## Screenshots
 ![Plex Web Screenshot](https://cloud.githubusercontent.com/assets/12835671/25927053/c6212fda-35b8-11e7-98ca-ad636e62076e.jpg)
 ![Plex Home Theater Screenshot](https://cloud.githubusercontent.com/assets/12835671/25927057/d018e2ee-35b8-11e7-9f41-27554d4fca97.jpg)
 ![Plex iOS Screenshot](https://cloud.githubusercontent.com/assets/12835671/25927072/dbecdd3c-35b8-11e7-80d9-056e59088501.jpg)
-
 
 ## Setup
 1. Download and unzip LiveTVH.bundle (or clone the repository) to the [Plex Media Server/Plug-ins](https://support.plex.tv/hc/en-us/articles/201106098-How-do-I-find-the-Plug-Ins-folder-) directory, and rename (if necessary) to `LiveTVH.bundle`.
