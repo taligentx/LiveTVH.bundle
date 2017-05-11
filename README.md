@@ -3,7 +3,11 @@ LiveTVH provides live TV streaming for [Plex](https://plex.tv) via [Tvheadend](h
 
 ## Features
 * EPG displayed as a simple list within each channel description, with a configurable time period to display in 12/24 hour time.
-* Metadata and artwork lookup from theTVDB and The Movie DB, with asynchronous searches and loading to minimize channel list load times.  If available through Tvheadend's EPG, searching theTVDB utilizes zap2it ID information for more exact matches and will fall back to searching by name if not available.
+* Metadata and artwork lookup from theTVDB and The Movie DB, with asynchronous searches and loading to minimize channel list load times.  
+
+  If available through Tvheadend's EPG, searching theTVDB utilizes zap2it ID information for more exact matches and will fall back to searching by name if not available.
+  
+  If show artwork isn't available, LiveTVH will fallback to using Tvheadend's channel icons.
 * Customized for different clients to display metadata more efficiently - Plex clients vary quite a bit in which fields they choose to display!
 * Search results, metadata, and artwork caching - again, to minimize channel list load times.
 * Tvheadend authentication info stored in HTTP headers where possible instead of being sent in the URL - this prevents the Tvheadend username and password from showing up in the Plex log files, for example.
