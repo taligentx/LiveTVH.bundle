@@ -255,9 +255,9 @@ def MainMenu():
 
 # Build the channel as a MovieObject
 @route(PREFIX + '/channel')
-def channel(title, uuid, thumb, fallbackThumb, art, summary, tagline, source_title, year, rating, content_rating, genres, container=False, checkFiles=0, includeBandwidths=1, **kwargs):
+def channel(title, uuid, thumb, fallbackThumb, art, summary, tagline, source_title, year, rating, content_rating, genres, container=False, checkFiles=0, **kwargs):
     channelObject = MovieObject(
-        key = Callback(channel, title=title, uuid=uuid, thumb=thumb, fallbackThumb=fallbackThumb, art=art, summary=summary, tagline=tagline, source_title=source_title, year=year, rating=rating, content_rating=content_rating, genres=genres, container=True, checkFiles=0, includeBandwidths=1, **kwargs),
+        key = Callback(channel, title=title, uuid=uuid, thumb=thumb, fallbackThumb=fallbackThumb, art=art, summary=summary, tagline=tagline, source_title=source_title, year=year, rating=rating, content_rating=content_rating, genres=genres, container=True, checkFiles=0, **kwargs),
         rating_key = uuid,
         title = title,
         thumb = Callback(image, url=thumb, fallback=fallbackThumb),
