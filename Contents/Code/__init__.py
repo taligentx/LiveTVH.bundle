@@ -102,11 +102,11 @@ def MainMenu():
         try: tvhChannelsData = JSON.ObjectFromURL(url=tvhChannelURL, headers=tvhHeaders, values=None, cacheTime=epgCacheTime)
         except Exception as e: Log.Critical("Error retrieving Tvheadend channel data: " + str(e))
 
-        try: tvhEPGData = JSON.ObjectFromURL(encoding='utf-8', url=tvhEPGURL, headers=tvhHeaders, values=None, cacheTime=epgCacheTime)
+        try: tvhEPGData = JSON.ObjectFromURL(url=tvhEPGURL, headers=tvhHeaders, cacheTime=epgCacheTime, encoding='utf-8', max_size=20971520, values=None)
         except:
             try:
                 # Tvheadend's ATSC OTA EPG grabber sends UTF-8 characters as ISO-8859-1
-                rawEPGData = HTTP.Request(url=tvhEPGURL, headers=tvhHeaders, cacheTime=epgCacheTime, values=None, encoding='latin-1').content
+                rawEPGData = HTTP.Request(url=tvhEPGURL, headers=tvhHeaders, cacheTime=epgCacheTime, encoding='latin-1', max_size=20971520, values=None).content
                 tvhEPGData = JSON.ObjectFromString(rawEPGData, encoding='utf-8')
             except Exception as e: Log.Warn("Error retrieving Tvheadend EPG data: " + str(e))
 
@@ -255,9 +255,9 @@ def MainMenu():
 
 # Build the channel as a MovieObject
 @route(PREFIX + '/channel')
-def channel(title, uuid, thumb, fallbackThumb, art, summary, tagline, source_title, year, rating, content_rating, genres, container=False, checkFiles=0, **kwargs):
+def channel(title, uuid, thumb, fallbackThumb, art, summary, tagline, source_title, year, rating, content_rating, genres, container=False, checkFiles=0, includeBandwidths=1, **kwargs):
     channelObject = MovieObject(
-        key = Callback(channel, title=title, uuid=uuid, thumb=thumb, fallbackThumb=fallbackThumb, art=art, summary=summary, tagline=tagline, source_title=source_title, year=year, rating=rating, content_rating=content_rating, genres=genres, container=True, checkFiles=0, **kwargs),
+        key = Callback(channel, title=title, uuid=uuid, thumb=thumb, fallbackThumb=fallbackThumb, art=art, summary=summary, tagline=tagline, source_title=source_title, year=year, rating=rating, content_rating=content_rating, genres=genres, container=True, checkFiles=0, includeBandwidths=1, **kwargs),
         rating_key = uuid,
         title = title,
         thumb = Callback(image, url=thumb, fallback=fallbackThumb),
@@ -276,12 +276,11 @@ def channel(title, uuid, thumb, fallbackThumb, art, summary, tagline, source_tit
                     PartObject(
                         key=Callback(stream, uuid=uuid),
                         streams=[
-                            VideoStreamObject(codec='mpeg2video'),
-                            AudioStreamObject(codec='ac3')
+                            VideoStreamObject(),
+                            AudioStreamObject()
                         ]
                     )
                 ],
-                container = 'mpegts',
                 optimized_for_streaming = True
             )
         ]
@@ -315,12 +314,11 @@ def channelVideoClipObject(title, uuid, thumb, fallbackThumb, art, summary, tagl
                     PartObject(
                         key=Callback(stream, uuid=uuid),
                         streams=[
-                            VideoStreamObject(codec='mpeg2video'),
-                            AudioStreamObject(codec='ac3')
+                            VideoStreamObject(),
+                            AudioStreamObject()
                         ]
                     )
                 ],
-                container = 'mpegts',
                 optimized_for_streaming = True
             )
         ]
@@ -470,9 +468,24 @@ def tvdb(title, zap2itID, zap2itMissingID=None):
     if title in Dict:
         if time.time() >= Dict[title]: pass
         else:
-            h, m = divmod(int(Dict[title] - time.time()), 3600)
+            m, s = divmod(int(Dict[title] - time.time()), 60)
+            h, m = divmod(m, 60)
             d, h = divmod(h, 24)
-            Log.Info("theTVDB previously had no results for " + title + ", will try again after %sd, %sh." % (d,h))
+            if d != 0:
+                if d == 1:
+                    Log.Info("theTVDB previously had no results for " + title + ", will try again after %s day." % d)
+                else:
+                    Log.Info("theTVDB previously had no results for " + title + ", will try again after %s days." % d)
+            elif h != 0:
+                if h == 1:
+                    Log.Info("theTVDB previously had no results for " + title + ", will try again after %s hour." % h)
+                else:
+                    Log.Info("theTVDB previously had no results for " + title + ", will try again after %s hours." % h)
+            else:
+                if m == 1:
+                    Log.Info("theTVDB previously had no results for " + title + ", will try again after %s minute." % m)
+                else:
+                    Log.Info("theTVDB previously had no results for " + title + ", will try again after %s minutes." % m)
             return None
 
     # Request an authorization token if it doesn't exist
