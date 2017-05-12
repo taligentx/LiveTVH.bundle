@@ -276,11 +276,12 @@ def channel(title, uuid, thumb, fallbackThumb, art, summary, tagline, source_tit
                     PartObject(
                         key=Callback(stream, uuid=uuid),
                         streams=[
-                            VideoStreamObject(),
-                            AudioStreamObject()
+                            VideoStreamObject(codec=VideoCodec.H264),
+                            AudioStreamObject(codec=AudioCodec.AAC)
                         ]
                     )
                 ],
+                container = Container.MP4,
                 optimized_for_streaming = True
             )
         ]
@@ -314,11 +315,12 @@ def channelVideoClipObject(title, uuid, thumb, fallbackThumb, art, summary, tagl
                     PartObject(
                         key=Callback(stream, uuid=uuid),
                         streams=[
-                            VideoStreamObject(),
-                            AudioStreamObject()
+                            VideoStreamObject(codec=VideoCodec.H264),
+                            AudioStreamObject(codec=AudioCodec.AAC)
                         ]
                     )
                 ],
+                container = Container.MP4,
                 optimized_for_streaming = True
             )
         ]
