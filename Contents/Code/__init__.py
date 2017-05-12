@@ -30,8 +30,8 @@ tmdbGenreData = None
 
 
 def Start():
-    setPrefs()
     Log.Info("LiveTVH version: " + liveTVHVersion)
+    setPrefs()
 
 
 @route(PREFIX + '/validateprefs')
@@ -58,6 +58,7 @@ def setPrefs():
 
     try:
         tvhInfoData = JSON.ObjectFromURL(url=tvhServerInfoURL, headers=tvhHeaders, values=None, cacheTime=1)
+        Log.Info("Tvheadend version: " + tvhInfoData['sw_version'])
         if tvhInfoData['api_version'] >= 15:
             tvhReachable = True
         else:
