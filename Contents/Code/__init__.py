@@ -9,9 +9,10 @@ improveTheTVDB = True
 
 # Cache times
 channelDataCacheTime = CACHE_1DAY
-epgCacheTime = int(Prefs['prefEPGCount']) * 3600
 imageCacheTime = CACHE_1MONTH
 tvdbRetryInterval = CACHE_1MONTH
+if int(Prefs['prefEPGCount']) == 0: epgCacheTime = 3600
+else: epgCacheTime = int(Prefs['prefEPGCount']) * 3600
 
 
 liveTVHVersion = '1.0'
@@ -109,7 +110,11 @@ def MainMenu():
     else:
         # Get EPG data from Tvheadend
         tvhEPGData = None
-        try: epgLimit = int(tvhChannelsData['total']) * int(Prefs['prefEPGCount']) * 4
+        try:
+            if int(Prefs['prefEPGCount']) == 0:
+                epgLimit = int(tvhChannelsData['total']) * 6
+            else:
+                epgLimit = int(tvhChannelsData['total']) * int(Prefs['prefEPGCount']) * 6
         except Exception as e:
             Log.Warn("Error calculating the EPG limit: " + str(e))
             epgLimit = 10000
