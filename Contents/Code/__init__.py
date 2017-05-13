@@ -8,7 +8,8 @@
 improveTheTVDB = True
 
 # Cache times
-epgCacheTime = CACHE_1DAY
+channelDataCacheTime = CACHE_1DAY
+epgCacheTime = int(Prefs['prefEPGCount']) * 3600
 imageCacheTime = CACHE_1MONTH
 tvdbRetryInterval = CACHE_1MONTH
 
@@ -92,27 +93,67 @@ def setPrefs():
 def MainMenu():
     mainMenuContainer = ObjectContainer(title1=TITLE, no_cache=True)
 
-    # Get channel and EPG data from Tvheadend
+    # Get channel data from Tvheadend
     tvhChannelsData = None
-    tvhEPGData = None
     tvhChannelURL = '%s/api/channel/grid?start=0&limit=1000' % tvhAddress
-    tvhEPGURL = '%s/api/epg/events/grid?start=0&limit=10000' % tvhAddress
 
     if tvhReachable == True:
 
-        try: tvhChannelsData = JSON.ObjectFromURL(url=tvhChannelURL, headers=tvhHeaders, values=None, cacheTime=epgCacheTime)
+        try: tvhChannelsData = JSON.ObjectFromURL(url=tvhChannelURL, headers=tvhHeaders, values=None, cacheTime=channelDataCacheTime)
         except Exception as e: Log.Critical("Error retrieving Tvheadend channel data: " + str(e))
 
-        try: tvhEPGData = JSON.ObjectFromURL(url=tvhEPGURL, headers=tvhHeaders, cacheTime=epgCacheTime, encoding='utf-8', max_size=20971520, values=None)
-        except:
-            try:
-                # Tvheadend's ATSC OTA EPG grabber sends UTF-8 characters as ISO-8859-1
-                rawEPGData = HTTP.Request(url=tvhEPGURL, headers=tvhHeaders, cacheTime=epgCacheTime, encoding='latin-1', max_size=20971520, values=None).content
-                tvhEPGData = JSON.ObjectFromString(rawEPGData, encoding='utf-8')
-            except Exception as e: Log.Warn("Error retrieving Tvheadend EPG data: " + str(e))
+    # Display an error message to clients if Tvheadend is malfunctional
+    if tvhChannelsData == None:
+        mainMenuContainer.add(DirectoryObject(title=L("channelsUnavailable")))
 
-    # Set metadata for each channel and add to the main menu
-    if tvhChannelsData != None: 
+    else:
+        # Get EPG data from Tvheadend
+        tvhEPGData = None
+        try: epgLimit = int(tvhChannelsData['total']) * int(Prefs['prefEPGCount']) * 4
+        except Exception as e:
+            Log.Warn("Error calculating the EPG limit: " + str(e))
+            epgLimit = 10000
+
+        epgLoopLimit = epgLimit
+        epgUTF8Encoding = True
+        while True:
+            try:
+                tvhEPGURL = '%s/api/epg/events/grid?start=0&limit=%s' % (tvhAddress,epgLoopLimit)
+                tvhEPGData = JSON.ObjectFromURL(url=tvhEPGURL, headers=tvhHeaders, cacheTime=epgCacheTime, encoding='utf-8', max_size=10485760, values=None)
+                if tvhEPGData != None: break
+            except Exception as e:
+                if '2103' in str(e):
+                    epgLoopLimit = epgLoopLimit - 250
+                    if epgLoopLimit <= 0:
+                        Log.Warn('Unable to retrieve Tvheadend EPG data within the data size limit.')
+                        break
+                    else: Log.Warn("Tvheadend EPG data exceeded the data size limit, reducing the request: " + str(e))
+                else:
+                    Log.Warn("Unable to retrieve Tvheadend EPG data as UTF-8, falling back to ISO-8859-1: " + str(e))
+                    epgUTF8Encoding = False
+                    break
+
+        # Tvheadend's ATSC OTA EPG grabber sends UTF-8 characters as ISO-8859-1
+        if tvhEPGData == None and epgUTF8Encoding == False:
+            epgLoopLimit = epgLimit
+            while True:
+                try:
+                    tvhEPGURL = '%s/api/epg/events/grid?start=0&limit=%s' % (tvhAddress,epgLoopLimit)
+                    rawEPGData = HTTP.Request(url=tvhEPGURL, headers=tvhHeaders, cacheTime=epgCacheTime, encoding='latin-1', values=None).content
+                    tvhEPGData = JSON.ObjectFromString(rawEPGData, encoding='utf-8', max_size=10485760)
+                    if tvhEPGData != None: break
+                except Exception as e:
+                    if '2103' in str(e):
+                        epgLoopLimit = epgLoopLimit - 250
+                        if epgLoopLimit <= 0:
+                            Log.Warn('Unable to retrieve Tvheadend EPG data within the data size limit.')
+                            break
+                        else: Log.Warn("Tvheadend EPG data exceeded the data size limit, reducing the request: " + str(e))
+                    else:
+                        Log.Warn("Error retrieving Tvheadend EPG data: " + str(e))
+                        break
+
+        # Set metadata for each channel and add to the main menu
         for tvhChannel in sorted(tvhChannelsData['entries'], key=lambda t: float(t['number'])):
 
             # Set channel metadata using Tvheadend channel info
@@ -187,7 +228,7 @@ def MainMenu():
                             # in the next number of hours or number of entries, whichever is greater
                             if tvhEPGEntry.get('nextEventId'):
                                 nextEventID = tvhEPGEntry['nextEventId']
-                                epgLimit = int(Prefs['prefEPGCount'])
+                                epgCount = int(Prefs['prefEPGCount'])
                                 timeLimit = int(time.time()) + (int(Prefs['prefEPGCount'])*3600)
                                 nextEPGCount = 1
                                 nextEPGLoop = True
@@ -195,7 +236,7 @@ def MainMenu():
                                     for nextEntry in tvhEPGData['entries']:
                                         nextEntryStart = int(nextEntry['start'])
                                         try:
-                                            if nextEntry['eventId'] == nextEventID and (nextEntryStart <= timeLimit or nextEPGCount <= epgLimit):
+                                            if nextEntry['eventId'] == nextEventID and (nextEntryStart <= timeLimit or nextEPGCount <= epgCount):
                                                 if (Prefs['pref24Time'] == True):
                                                     nextStart = time.strftime("%H:%M", time.localtime(nextEntryStart))
                                                 else:
@@ -204,7 +245,7 @@ def MainMenu():
                                                 else: summary = nextStart + ": " + nextEntry['title'] + '\n'
                                                 nextEventID = nextEntry['nextEventId']
                                                 nextEPGCount += 1
-                                                if nextEPGCount > epgLimit and nextEntryStart > timeLimit:
+                                                if nextEPGCount > epgCount and nextEntryStart > timeLimit:
                                                     break
                                             else:
                                                 nextEPGLoop = False
@@ -245,11 +286,7 @@ def MainMenu():
             else:
                 mainMenuContainer.add(channel(title=title, uuid=uuid, thumb=thumb, fallbackThumb=fallbackThumb, art=art, summary=summary, tagline=tagline, source_title=source_title, year=year, rating=rating, content_rating=content_rating, genres=genres))
 
-    # Display an error message to clients if Tvheadend is malfunctional
-    else:
-        mainMenuContainer.add(DirectoryObject(title=L("channelsUnavailable")))
-
-    # Add the built-in Preferences object to the main menu - visible on OpenPHT
+    # Add the built-in Preferences object to the main menu - visible on PHT, Android
     mainMenuContainer.add(PrefsObject(title=L('preferences')))
     return mainMenuContainer
 
