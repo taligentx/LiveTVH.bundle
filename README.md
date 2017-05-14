@@ -1,6 +1,12 @@
 # LiveTVH.bundle
 LiveTVH provides live TV streaming for [Plex](https://plex.tv) via [Tvheadend](https://tvheadend.org), including metadata from Tvheadend's EPG, [theTVDB](https://thetvdb.com), and [The Movie DB](https://www.themoviedb.org).
 
+## Release notes
+* 2017.05.14 - 1.1
+  * Fetch EPG data based on the number of channels and hours of EPG data necessary (up to a maximum of 10,000 items).
+  * Fixed thumbnail when falling back to a channel logo when a show matches theTVDB but does not have a poster.
+  * Fixed 12-hour time on non-linux platforms.
+* 2017.05.10 - Initial release
 ## Features
 * EPG displayed as a simple list within each channel description, with a configurable time period to display in 12/24 hour time.
 * Metadata and artwork lookup from theTVDB and The Movie DB, with asynchronous searches and loading to minimize channel list load times.  
