@@ -15,7 +15,7 @@ if int(Prefs['prefEPGCount']) == 0: epgCacheTime = 3600
 else: epgCacheTime = int(Prefs['prefEPGCount']) * 3600
 
 
-liveTVHVersion = '1.0'
+liveTVHVersion = '1.1'
 TITLE = 'LiveTVH'
 PREFIX = '/video/livetvh'
 THUMB = 'LiveTVH-thumb.jpg'
@@ -115,6 +115,7 @@ def MainMenu():
                 epgLimit = int(tvhChannelsData['total']) * 6
             else:
                 epgLimit = int(tvhChannelsData['total']) * int(Prefs['prefEPGCount']) * 6
+            if epgLimit > 10000: epgLimit = 10000
         except Exception as e:
             Log.Warn("Error calculating the EPG limit: " + str(e))
             epgLimit = 10000
@@ -124,36 +125,22 @@ def MainMenu():
         while True:
             try:
                 tvhEPGURL = '%s/api/epg/events/grid?start=0&limit=%s' % (tvhAddress,epgLoopLimit)
-                tvhEPGData = JSON.ObjectFromURL(url=tvhEPGURL, headers=tvhHeaders, cacheTime=epgCacheTime, encoding='utf-8', max_size=10485760, values=None)
+                if epgUTF8Encoding == True: rawEPGData = HTTP.Request(url=tvhEPGURL, headers=tvhHeaders, cacheTime=epgCacheTime, encoding='utf-8', values=None).content
+                else: rawEPGData = HTTP.Request(url=tvhEPGURL, headers=tvhHeaders, cacheTime=epgCacheTime, encoding='latin-1', values=None).content
+                rawEPGData = re.sub(r'[\x00-\x1f]', '', rawEPGData)
+                tvhEPGData = JSON.ObjectFromString(rawEPGData, encoding='utf-8', max_size=10485760)
                 if tvhEPGData != None: break
             except Exception as e:
-                if '2103' in str(e):
-                    epgLoopLimit = epgLoopLimit - 250
+                if 'Data of size' in str(e):
+                    epgLoopLimit = epgLoopLimit - 500
                     if epgLoopLimit <= 0:
                         Log.Warn('Unable to retrieve Tvheadend EPG data within the data size limit.')
                         break
                     else: Log.Warn("Tvheadend EPG data exceeded the data size limit, reducing the request: " + str(e))
                 else:
-                    Log.Warn("Unable to retrieve Tvheadend EPG data as UTF-8, falling back to ISO-8859-1: " + str(e))
-                    epgUTF8Encoding = False
-                    break
-
-        # Tvheadend's ATSC OTA EPG grabber sends UTF-8 characters as ISO-8859-1
-        if tvhEPGData == None and epgUTF8Encoding == False:
-            epgLoopLimit = epgLimit
-            while True:
-                try:
-                    tvhEPGURL = '%s/api/epg/events/grid?start=0&limit=%s' % (tvhAddress,epgLoopLimit)
-                    rawEPGData = HTTP.Request(url=tvhEPGURL, headers=tvhHeaders, cacheTime=epgCacheTime, encoding='latin-1', values=None).content
-                    tvhEPGData = JSON.ObjectFromString(rawEPGData, encoding='utf-8', max_size=10485760)
-                    if tvhEPGData != None: break
-                except Exception as e:
-                    if '2103' in str(e):
-                        epgLoopLimit = epgLoopLimit - 250
-                        if epgLoopLimit <= 0:
-                            Log.Warn('Unable to retrieve Tvheadend EPG data within the data size limit.')
-                            break
-                        else: Log.Warn("Tvheadend EPG data exceeded the data size limit, reducing the request: " + str(e))
+                    if epgUTF8Encoding == True:
+                        Log.Warn("Unable to retrieve Tvheadend EPG data as UTF-8, falling back to ISO-8859-1: " + str(e))
+                        epgUTF8Encoding = False
                     else:
                         Log.Warn("Error retrieving Tvheadend EPG data: " + str(e))
                         break
@@ -193,8 +180,8 @@ def MainMenu():
                                 startTime = time.strftime("%H:%M", time.localtime(int(tvhEPGEntry['start'])))
                                 stopTime = time.strftime("%H:%M", time.localtime(int(tvhEPGEntry['stop'])))
                             else:
-                                startTime = time.strftime("%I:%M%P", time.localtime(int(tvhEPGEntry['start']))).lstrip('0')
-                                stopTime = time.strftime("%I:%M%P", time.localtime(int(tvhEPGEntry['stop']))).lstrip('0')
+                                startTime = time.strftime("%I:%M%p", time.localtime(int(tvhEPGEntry['start']))).lstrip('0').lower()
+                                stopTime = time.strftime("%I:%M%p", time.localtime(int(tvhEPGEntry['stop']))).lstrip('0').lower()
 
                             # Set the episode title and summary
                             if Client.Product == 'Plex Web':
@@ -245,7 +232,7 @@ def MainMenu():
                                                 if (Prefs['pref24Time'] == True):
                                                     nextStart = time.strftime("%H:%M", time.localtime(nextEntryStart))
                                                 else:
-                                                    nextStart = time.strftime("%I:%M%P", time.localtime(nextEntryStart)).lstrip('0')
+                                                    nextStart = time.strftime("%I:%M%p", time.localtime(nextEntryStart)).lstrip('0').lower()
                                                 if summary: summary = summary + nextStart + ": " + nextEntry['title'] + '\n'
                                                 else: summary = nextStart + ": " + nextEntry['title'] + '\n'
                                                 nextEventID = nextEntry['nextEventId']
@@ -392,7 +379,10 @@ def image(url=None, fallback=None):
                 if fallback == R(ART):
                     return Redirect(R(ART))
                 elif fallback != None:
-                    imageContent = HTTP.Request(url=fallback, cacheTime=imageCacheTime, values=None).content
+                    if tvhAddress in fallback:
+                        imageContent = HTTP.Request(url=fallback, headers=tvhHeaders, cacheTime=imageCacheTime, values=None).content
+                    else:
+                        imageContent = HTTP.Request(url=fallback, cacheTime=imageCacheTime, values=None).content
                     return DataObject(imageContent, 'image/jpeg')
                 else: return None
 
