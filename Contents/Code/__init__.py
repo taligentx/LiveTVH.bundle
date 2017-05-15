@@ -5,15 +5,18 @@
 # Display the EPG zap2it ID for a show in the channel summary if the ID on theTVDB.com does not match
 # due to a missing ID, outdated ID, or incorrect show match.  If the show matches correctly, consider
 # contributing by updating the entry on thetvdb.com to improve search results.
+# This has no effect if the EPG data does not use zap2it IDs.
 improveTheTVDB = True
 
 # Cache times
 channelDataCacheTime = CACHE_1DAY
 imageCacheTime = CACHE_1MONTH
 tvdbRetryInterval = CACHE_1MONTH
-if int(Prefs['prefEPGCount']) == 0: epgCacheTime = 3600
-else: epgCacheTime = int(Prefs['prefEPGCount']) * 3600
 
+if int(Prefs['prefEPGCount']) == 0:
+    epgCacheTime = CACHE_1HOUR
+else:
+    epgCacheTime = int(Prefs['prefEPGCount']) * CACHE_1HOUR
 
 liveTVHVersion = '1.1'
 TITLE = 'LiveTVH'
@@ -21,8 +24,7 @@ PREFIX = '/video/livetvh'
 THUMB = 'LiveTVH-thumb.jpg'
 ART = 'LiveTVH-art.jpg'
 
-
-import base64, time
+import base64, time, re
 tvhHeaders = None
 tvhAddress = None
 tvhReachable = False
@@ -61,11 +63,13 @@ def setPrefs():
     try:
         tvhInfoData = JSON.ObjectFromURL(url=tvhServerInfoURL, headers=tvhHeaders, values=None, cacheTime=1)
         Log.Info("Tvheadend version: " + tvhInfoData['sw_version'])
+
         if tvhInfoData['api_version'] >= 15:
             tvhReachable = True
         else:
             Log.Critical("Tvheadend version " + tvhInfoData['sw_version'] + " is unsupported.")
             return
+
     except Exception as e:
         Log.Critical("Error accessing Tvheadend: " + str(e))
         tvhReachable = False
@@ -85,58 +89,72 @@ def setPrefs():
             tmdbConfigData = JSON.ObjectFromURL(url=tmdbConfigURL, values=None, cacheTime=1)
             tmdbGenreData = JSON.ObjectFromURL(url=tmdbGenreURL, values=None, cacheTime=1)
             tmdbBaseURL = tmdbConfigData['images']['base_url']
+
         except Exception as e:
             Log.Warn("Error accessing themovieDB: " + str(e))
 
 
-# Build the channel list
+# Build the main menu
 @handler(PREFIX, TITLE, art=ART, thumb=THUMB)
 def MainMenu():
     mainMenuContainer = ObjectContainer(title1=TITLE, no_cache=True)
 
-    # Get channel data from Tvheadend
+    # Request channel data from Tvheadend
     tvhChannelsData = None
     tvhChannelURL = '%s/api/channel/grid?start=0&limit=1000' % tvhAddress
 
     if tvhReachable == True:
+        try:
+            tvhChannelsData = JSON.ObjectFromURL(url=tvhChannelURL, headers=tvhHeaders, values=None, cacheTime=channelDataCacheTime)
 
-        try: tvhChannelsData = JSON.ObjectFromURL(url=tvhChannelURL, headers=tvhHeaders, values=None, cacheTime=channelDataCacheTime)
-        except Exception as e: Log.Critical("Error retrieving Tvheadend channel data: " + str(e))
+        except Exception as e:
+            Log.Critical("Error retrieving Tvheadend channel data: " + str(e))
 
     # Display an error message to clients if Tvheadend is malfunctional
     if tvhChannelsData == None:
         mainMenuContainer.add(DirectoryObject(title=L("channelsUnavailable")))
 
+    # Build the channel list
     else:
-        # Get EPG data from Tvheadend
+        # Set the number of EPG items to request from Tvheadend (up to 10000)
         tvhEPGData = None
         try:
             if int(Prefs['prefEPGCount']) == 0:
                 epgLimit = int(tvhChannelsData['total']) * 6
             else:
                 epgLimit = int(tvhChannelsData['total']) * int(Prefs['prefEPGCount']) * 6
+
             if epgLimit > 10000: epgLimit = 10000
+
         except Exception as e:
             Log.Warn("Error calculating the EPG limit: " + str(e))
             epgLimit = 10000
 
+        # Request EPG data from Tvheadend as UTF-8 with fallback to ISO-8859-1
         epgLoopLimit = epgLimit
         epgUTF8Encoding = True
         while True:
             try:
                 tvhEPGURL = '%s/api/epg/events/grid?start=0&limit=%s' % (tvhAddress,epgLoopLimit)
-                if epgUTF8Encoding == True: rawEPGData = HTTP.Request(url=tvhEPGURL, headers=tvhHeaders, cacheTime=epgCacheTime, encoding='utf-8', values=None).content
-                else: rawEPGData = HTTP.Request(url=tvhEPGURL, headers=tvhHeaders, cacheTime=epgCacheTime, encoding='latin-1', values=None).content
-                rawEPGData = re.sub(r'[\x00-\x1f]', '', rawEPGData)
+
+                if epgUTF8Encoding == True:
+                    rawEPGData = HTTP.Request(url=tvhEPGURL, headers=tvhHeaders, cacheTime=epgCacheTime, encoding='utf-8', values=None).content
+                else:
+                    rawEPGData = HTTP.Request(url=tvhEPGURL, headers=tvhHeaders, cacheTime=epgCacheTime, encoding='latin-1', values=None).content
+
+                rawEPGData = re.sub(r'[\x00-\x1f]', '', rawEPGData) # Strip control characters from EPG data (yep, this has actually happened)
                 tvhEPGData = JSON.ObjectFromString(rawEPGData, encoding='utf-8', max_size=10485760)
                 if tvhEPGData != None: break
+
             except Exception as e:
                 if 'Data of size' in str(e):
                     epgLoopLimit = epgLoopLimit - 500
-                    if epgLoopLimit <= 0:
+                    if epgLoopLimit > 0:
+                        Log.Warn("Tvheadend EPG data exceeded the data size limit, reducing the request: " + str(e))
+                    else:
                         Log.Warn('Unable to retrieve Tvheadend EPG data within the data size limit.')
                         break
-                    else: Log.Warn("Tvheadend EPG data exceeded the data size limit, reducing the request: " + str(e))
+
                 else:
                     if epgUTF8Encoding == True:
                         Log.Warn("Unable to retrieve Tvheadend EPG data as UTF-8, falling back to ISO-8859-1: " + str(e))
@@ -149,11 +167,17 @@ def MainMenu():
         for tvhChannel in sorted(tvhChannelsData['entries'], key=lambda t: float(t['number'])):
 
             # Set channel metadata using Tvheadend channel info
-            try: title = tvhChannel['name']
-            except: title = None
+            try:
+                title = tvhChannel['name']
+            except:
+                title = None
+
             if (Prefs['prefChannelNumbers'] == True):
-                if title: title = str(tvhChannel['number']) + " " + title
-                else: title = str(tvhChannel['number'])
+                if title:
+                    title = str(tvhChannel['number']) + " " + title
+                else:
+                    title = str(tvhChannel['number'])
+
             uuid = tvhChannel['uuid']
             thumb = None
             fallbackThumb = None
@@ -187,34 +211,25 @@ def MainMenu():
                             if Client.Product == 'Plex Web':
                                 title = title + "                              " # Force Plex Web to use the Details view by padding the title
                                 tagline = startTime + '-' + stopTime
-                                if tvhEPGEntry.get('subtitle'):
-                                    tagline = tagline + ': ' + tvhEPGEntry['subtitle']
-                                if tvhEPGEntry.get('description'):
-                                    summary = tvhEPGEntry['description'] + '\n'
+                                if tvhEPGEntry.get('subtitle'): tagline = tagline + ': ' + tvhEPGEntry['subtitle']
+                                if tvhEPGEntry.get('description'): summary = tvhEPGEntry['description'] + '\n'
 
                             elif Client.Product == 'Plex for Roku':
                                 source_title = startTime + '-' + stopTime
-                                if tvhEPGEntry.get('subtitle'):
-                                    source_title = source_title + ': ' + tvhEPGEntry['subtitle']
-                                if tvhEPGEntry.get('description'):
-                                    summary = tvhEPGEntry['description'] + '\n'
+                                if tvhEPGEntry.get('subtitle'): source_title = source_title + ': ' + tvhEPGEntry['subtitle']
+                                if tvhEPGEntry.get('description'): summary = tvhEPGEntry['description'] + '\n'
 
                             elif Client.Product == 'Plex for Android':
                                 source_title = startTime + '-' + stopTime
                                 summary = startTime + '-' + stopTime
-                                if tvhEPGEntry.get('description'):
-                                    summary = summary + ': ' + tvhEPGEntry['description'] + '\n'
-                                else:
-                                    summary = summary + '\n'
+                                if tvhEPGEntry.get('description'): summary = summary + ': ' + tvhEPGEntry['description'] + '\n'
+                                else: summary = summary + '\n'
 
                             else:
-                                if tvhEPGEntry.get('subtitle'):
-                                    title = title + " (" + tvhEPGEntry['subtitle'] + ")"
                                 summary = startTime + '-' + stopTime
-                                if tvhEPGEntry.get('description'):
-                                    summary = summary + ': ' + tvhEPGEntry['description'] + '\n'
-                                else:
-                                    summary = summary + '\n'
+                                if tvhEPGEntry.get('subtitle'): title = title + " (" + tvhEPGEntry['subtitle'] + ")"
+                                if tvhEPGEntry.get('description'): summary = summary + ': ' + tvhEPGEntry['description'] + '\n'
+                                else: summary = summary + '\n'
 
                             # List upcoming titles on this channel in the summary by searching for shows
                             # in the next number of hours or number of entries, whichever is greater
@@ -233,14 +248,18 @@ def MainMenu():
                                                     nextStart = time.strftime("%H:%M", time.localtime(nextEntryStart))
                                                 else:
                                                     nextStart = time.strftime("%I:%M%p", time.localtime(nextEntryStart)).lstrip('0').lower()
+
                                                 if summary: summary = summary + nextStart + ": " + nextEntry['title'] + '\n'
                                                 else: summary = nextStart + ": " + nextEntry['title'] + '\n'
+
                                                 nextEventID = nextEntry['nextEventId']
                                                 nextEPGCount += 1
                                                 if nextEPGCount > epgCount and nextEntryStart > timeLimit:
                                                     break
+
                                             else:
                                                 nextEPGLoop = False
+
                                         except KeyError: pass
 
                             # Check if this title has a zap2it ID
@@ -261,22 +280,27 @@ def MainMenu():
                                 if metadataResults['rating'] != None: rating = metadataResults['rating']
                                 if metadataResults['content_rating'] != None: content_rating = metadataResults['content_rating']
                                 if metadataResults['genres'] != None: genres = metadataResults['genres']
-                                if metadataResults['zap2itMissingID'] != None and improveTheTVDB == True: summary = metadataResults['zap2itMissingID'] + " | " + summary
+                                if metadataResults['zap2itMissingID'] != None and improveTheTVDB == True:
+                                    summary = metadataResults['zap2itMissingID'] + " | " + summary
 
             # Use channel icons from Tvheadend as a fallback to remote artwork
             try:
                 if thumb == None and tvhChannel['icon_public_url'].startswith('imagecache'):
                     thumb = '%s/%s' % (tvhAddress, tvhChannel['icon_public_url'])
+
                 if tvhChannel['icon_public_url'].startswith('imagecache'):
                     fallbackThumb ='%s/%s' % (tvhAddress, tvhChannel['icon_public_url'])
+
             except: pass
 
-            # Build and add the channel to the main menu as either a MovieObject or VideoClipObject based on the client
-            # Plex for Roku only displays source_title for VideoClipObjects
+            # Set the channel object type
             if Client.Product == 'Plex for Roku':
-                mainMenuContainer.add(channelVideoClipObject(title=title, uuid=uuid, thumb=thumb, fallbackThumb=fallbackThumb, art=art, summary=summary, tagline=tagline, source_title=source_title, year=year, rating=rating, content_rating=content_rating, genres=genres))
+                channelType = 'VideoClipObject' # Plex for Roku only displays source_title for VideoClipObjects
             else:
-                mainMenuContainer.add(channel(title=title, uuid=uuid, thumb=thumb, fallbackThumb=fallbackThumb, art=art, summary=summary, tagline=tagline, source_title=source_title, year=year, rating=rating, content_rating=content_rating, genres=genres))
+                channelType = 'MovieObject'
+            
+            # Build and add the channel to the main menu
+            mainMenuContainer.add(channel(channelType=channelType, title=title, uuid=uuid, thumb=thumb, fallbackThumb=fallbackThumb, art=art, summary=summary, tagline=tagline, source_title=source_title, year=year, rating=rating, content_rating=content_rating, genres=genres))
 
     # Add the built-in Preferences object to the main menu - visible on PHT, Android
     mainMenuContainer.add(PrefsObject(title=L('preferences')))
@@ -285,9 +309,9 @@ def MainMenu():
 
 # Build the channel as a MovieObject
 @route(PREFIX + '/channel')
-def channel(title, uuid, thumb, fallbackThumb, art, summary, tagline, source_title, year, rating, content_rating, genres, container=False, checkFiles=0, **kwargs):
-    channelObject = MovieObject(
-        key = Callback(channel, title=title, uuid=uuid, thumb=thumb, fallbackThumb=fallbackThumb, art=art, summary=summary, tagline=tagline, source_title=source_title, year=year, rating=rating, content_rating=content_rating, genres=genres, container=True, checkFiles=0, **kwargs),
+def channel(channelType, title, uuid, thumb, fallbackThumb, art, summary, tagline, source_title, year, rating, content_rating, genres, container=False, checkFiles=0, **kwargs):
+    if year: year = int(year)
+    channelData = dict(key = Callback(channel, channelType=channelType, title=title, uuid=uuid, thumb=thumb, fallbackThumb=fallbackThumb, art=art, summary=summary, tagline=tagline, source_title=source_title, year=year, rating=rating, content_rating=content_rating, genres=genres, container=True, checkFiles=0, **kwargs),
         rating_key = uuid,
         title = title,
         thumb = Callback(image, url=thumb, fallback=fallbackThumb),
@@ -306,55 +330,21 @@ def channel(title, uuid, thumb, fallbackThumb, art, summary, tagline, source_tit
                     PartObject(
                         key=Callback(stream, uuid=uuid),
                         streams=[
-                            VideoStreamObject(codec=VideoCodec.H264),
-                            AudioStreamObject(codec=AudioCodec.AAC)
+                            VideoStreamObject(),
+                            AudioStreamObject()
                         ]
                     )
                 ],
-                container = Container.MP4,
                 optimized_for_streaming = True
             )
-        ]
-    )
-    if container:
-        return ObjectContainer(objects=[channelObject])
-    else:
-        return channelObject
+        ])
 
+    if channelType == 'MovieObject':
+        channelObject = MovieObject(**channelData)
 
-# Build the channel as a VideoClipObject for clients that do not work as well with MovieObject
-@route(PREFIX + '/channelvco')
-def channelVideoClipObject(title, uuid, thumb, fallbackThumb, art, summary, tagline, source_title, year, rating, content_rating, genres, container=False, checkFiles=0, **kwargs):
-    channelObject = VideoClipObject(
-        key = Callback(channelVideoClipObject, title=title, uuid=uuid, thumb=thumb, fallbackThumb=fallbackThumb, art=art, summary=summary, tagline=tagline, source_title=source_title, year=year, rating=rating, content_rating=content_rating, genres=genres, container=True, checkFiles=0, **kwargs),
-        rating_key = uuid,
-        title = title,
-        thumb = Callback(image, url=thumb, fallback=fallbackThumb),
-        art = Callback(image, url=art, fallback=R(ART)),
-        summary = summary,
-        source_title = source_title,
-        tagline = tagline,
-        year = year,
-        rating = float(rating),
-        content_rating = content_rating,
-        duration = 86400000,
-        genres = [genres],
-        items = [
-            MediaObject(
-                parts = [
-                    PartObject(
-                        key=Callback(stream, uuid=uuid),
-                        streams=[
-                            VideoStreamObject(codec=VideoCodec.H264),
-                            AudioStreamObject(codec=AudioCodec.AAC)
-                        ]
-                    )
-                ],
-                container = Container.MP4,
-                optimized_for_streaming = True
-            )
-        ]
-    )
+    elif channelType == 'VideoClipObject':
+        channelObject = VideoClipObject(**channelData)
+
     if container:
         return ObjectContainer(objects=[channelObject])
     else:
@@ -366,7 +356,8 @@ def channelVideoClipObject(title, uuid, thumb, fallbackThumb, art, summary, tagl
 # channel list load time can be reduced by running the search asynchronously
 @route(PREFIX + '/image')
 def image(url=None, fallback=None):
-    if url == None and fallback == None: return None
+    if url == None and fallback == None:
+        return None
 
     if 'api.thetvdb.com' in url:
         tvdbHeaders = {'Authorization' : 'Bearer %s' % tvdbToken}
@@ -374,16 +365,20 @@ def image(url=None, fallback=None):
 
         try:
             tvdbImageData = JSON.ObjectFromURL(url=url, headers=tvdbHeaders, values=None, cacheTime=imageCacheTime)
+
         except Ex.HTTPError as e:
             if e.code == 404:
                 if fallback == R(ART):
                     return Redirect(R(ART))
+
                 elif fallback != None:
                     if tvhAddress in fallback:
                         imageContent = HTTP.Request(url=fallback, headers=tvhHeaders, cacheTime=imageCacheTime, values=None).content
                     else:
                         imageContent = HTTP.Request(url=fallback, cacheTime=imageCacheTime, values=None).content
+
                     return DataObject(imageContent, 'image/jpeg')
+
                 else: return None
 
         if tvdbImageData != None:
@@ -396,6 +391,7 @@ def image(url=None, fallback=None):
         try:
             imageContent = HTTP.Request(url=url, headers=tvhHeaders, cacheTime=imageCacheTime, values=None).content
             return DataObject(imageContent, 'image/jpeg')
+
         except:
             return None
 
@@ -426,6 +422,7 @@ def stream(uuid):
     try:
         responseCode = HTTP.Request(testURL, headers=tvhHeaders, values=None, cacheTime=None, timeout=1).headers
         return IndirectResponse(MovieObject, key=streamURL)
+
     except Exception as e:
         Log.Warn("Tvheadend is not responding to this channel request - verify that there are available tuners: " + repr(e))
         raise Ex.MediaNotAvailable
@@ -443,8 +440,10 @@ def metadata(title, zap2itID):
     zap2itMissingID = None
 
     # Skip searching theTVDB if EPG data states the title is a movie
-    if str(zap2itID).startswith('MV') == True: epgMovie = True
-    else: epgMovie = False
+    if str(zap2itID).startswith('MV') == True:
+        epgMovie = True
+    else:
+        epgMovie = False
 
     # Search theTVDB
     if (thumb == None or art == None) and epgMovie == False:
@@ -483,6 +482,7 @@ def tvdbAuth():
         tvdbResponse = HTTP.Request(url=tvdbLoginURL, headers=tvdbHeaders, data=tvdbApiKeyJSON, cacheTime=1).content
         tvdbTokenData = JSON.ObjectFromString(tvdbResponse)
         tvdbToken = tvdbTokenData['token']
+
     except Ex.HTTPError as e:
         Log.Warn("Failed to retrieve theTVDB authorization token: " + str(e))
         tvdbToken = False
@@ -498,7 +498,7 @@ def tvdb(title, zap2itID, zap2itMissingID=None):
     tvdbGenres = None
     tvdbID = None
 
-    # Skip searching for this title if the theTVDB had no results within the configured tvdbRetryInterval.
+    # Skip searching for this title if the theTVDB had no results within tvdbRetryInterval.
     # This uses the framework Dict as a cache because Plex does not cache the HTTP 404 response from theTVDB API. 
     if title in Dict:
         if time.time() >= Dict[title]: pass
@@ -508,17 +508,17 @@ def tvdb(title, zap2itID, zap2itMissingID=None):
             d, h = divmod(h, 24)
             if d != 0:
                 if d == 1:
-                    Log.Info("theTVDB previously had no results for " + title + ", will try again after %s day." % d)
+                    Log.Info("theTVDB previously had no results for " + title + ", will try again after 1 day, %sh." % h)
                 else:
                     Log.Info("theTVDB previously had no results for " + title + ", will try again after %s days." % d)
             elif h != 0:
                 if h == 1:
-                    Log.Info("theTVDB previously had no results for " + title + ", will try again after %s hour." % h)
+                    Log.Info("theTVDB previously had no results for " + title + ", will try again after 1 hour, %sm." % m)
                 else:
                     Log.Info("theTVDB previously had no results for " + title + ", will try again after %s hours." % h)
             else:
                 if m == 1:
-                    Log.Info("theTVDB previously had no results for " + title + ", will try again after %s minute." % m)
+                    Log.Info("theTVDB previously had no results for " + title + ", will try again after 1m, %ss." % s)
                 else:
                     Log.Info("theTVDB previously had no results for " + title + ", will try again after %s minutes." % m)
             return None
@@ -528,15 +528,18 @@ def tvdb(title, zap2itID, zap2itMissingID=None):
         Log.Info("Requesting an authorization token for theTVDB")
         tvdbAuth()
         return tvdb(title, zap2itID)
+
     if tvdbToken == False:
         Log.Info("theTVDB authorization failed.")
-        return {'poster': tvdbPoster, 'fanart': tvdbFanart}
+        return {'poster': tvdbPosterSearchURL, 'fanart': tvdbFanartSearchURL}
 
     # Search using zap2it ID if available, otherwise search by name
     tvdbHeaders = {'Authorization' : 'Bearer %s' % tvdbToken}
 
-    if zap2itID != None: tvdbSearchURL = 'https://api.thetvdb.com/search/series?zap2itId=%s' % String.Quote(zap2itID)
-    else: tvdbSearchURL = 'https://api.thetvdb.com/search/series?name=%s' % String.Quote(title)
+    if zap2itID != None:
+        tvdbSearchURL = 'https://api.thetvdb.com/search/series?zap2itId=%s' % String.Quote(zap2itID)
+    else:
+        tvdbSearchURL = 'https://api.thetvdb.com/search/series?name=%s' % String.Quote(title)
 
     try:
         tvdbData = JSON.ObjectFromURL(url=tvdbSearchURL, headers=tvdbHeaders, values=None, cacheTime=imageCacheTime)
@@ -545,6 +548,7 @@ def tvdb(title, zap2itID, zap2itMissingID=None):
             if zap2itID != None:
                 tvdbID = tvdbResult['id']
                 break
+
             elif String.LevenshteinDistance(tvdbResult['seriesName'], title) == 0:
                 tvdbID = tvdbResult['id']
                 if zap2itMissingID != None: 
@@ -603,7 +607,11 @@ def tvdb(title, zap2itID, zap2itMissingID=None):
         Dict[title] = time.time() + tvdbRetryInterval
         h, m = divmod(int(tvdbRetryInterval), 3600)
         d, h = divmod(h, 24)
-        Log.Info("No results from theTVDB for " + title + ", skipping lookup for %s days." % d)
+        if d == 1:
+            Log.Info("No results from theTVDB for " + title + ", skipping lookup for 1 day, %sh." % h)
+        else:
+            Log.Info("No results from theTVDB for " + title + ", skipping lookup for %s days." % d)
+
         return None
 
     return {'poster': tvdbPosterSearchURL, 'fanart': tvdbFanartSearchURL, 'rating': tvdbRating, 'siteRating': tvdbSiteRating, 'genres': tvdbGenres, 'zap2itMissingID': zap2itMissingID}
@@ -626,45 +634,40 @@ def tmdb(title, epgMovie):
     except Exception as e:
         Log.Warn("Error retrieving TMDb data:  " + str(e))
 
-    # Check for a matching TV show (TMDb returns 'name') or movie (TMDb returns 'title')
-    if tmdbData != None and int(tmdbData['total_results']) > 0 :
-        for tmdbResult in tmdbData['results']:
-            try:
-                if String.LevenshteinDistance(tmdbResult['name'], title) == 0 and (tmdbResult['poster_path'] != None or tmdbResult['backdrop_path'] != None):
-                    if tmdbResult['poster_path'] != None:
-                        tmdbPoster = tmdbBaseURL + 'w342' + tmdbResult['poster_path']
-                    if tmdbResult['backdrop_path'] != None:
-                        tmdbBackdrop = tmdbBaseURL + 'original' + tmdbResult['backdrop_path']
-                    if tmdbResult.get('vote_average'):
-                            tmdbVoteAverage = float(tmdbResult['vote_average'])
-                    if tmdbResult.get('genre_ids'):
-                        for genreResultID in tmdbResult['genre_ids']:
-                            for genreList in tmdbGenreData['genres']:
-                                if genreResultID == genreList['id']:
-                                    if tmdbGenres == None: tmdbGenres = genreList['name']
-                                    else: tmdbGenres = tmdbGenres + ", " + genreList['name']
-                    break
-            except KeyError:
-                try:
-                    if String.LevenshteinDistance(tmdbResult['title'], title) == 0 and (tmdbResult['poster_path'] != None or tmdbResult['backdrop_path'] != None):
-                        if tmdbResult['poster_path'] != None:
-                            tmdbPoster = tmdbBaseURL + 'w342' + tmdbResult['poster_path']
-                        if tmdbResult['backdrop_path'] != None:
-                            tmdbBackdrop = tmdbBaseURL + 'original' + tmdbResult['backdrop_path']
-                        if tmdbResult.get('release_date'):
-                            year = int(tmdbResult['release_date'].split("-")[0])
-                        if tmdbResult.get('vote_average'):
-                            tmdbVoteAverage = tmdbResult['vote_average']
-                        if tmdbResult.get('genre_ids'):
-                            for genreResultID in tmdbResult['genre_ids']:
-                                for genreList in tmdbGenreData['genres']:
-                                    if genreResultID == genreList['id']:
-                                        if tmdbGenres == None: tmdbGenres = genreList['name']
-                                        else: tmdbGenres = tmdbGenres + ", " + genreList['name']
-                        break
-                except: pass
-            except: pass
-    else:
+    if tmdbData == None:
         Log.Info("No results from TMDb for " + title)
+
+    # Check for a matching movie or TV show
+    elif int(tmdbData['total_results']) > 0 :
+        for tmdbResult in tmdbData['results']:
+            tmdbTV = False
+            tmdbMovie = False
+            if tmdbResult.get('name') and String.LevenshteinDistance(tmdbResult['name'], title) == 0:
+                tmdbTV = True
+            elif tmdbResult.get('title') and String.LevenshteinDistance(tmdbResult['title'], title) == 0:
+                tmdbMovie = True
+
+            if (tmdbTV == True or tmdbMovie == True) and (tmdbResult['poster_path'] != None or tmdbResult['backdrop_path'] != None):
+                if tmdbResult['poster_path'] != None:
+                    tmdbPoster = tmdbBaseURL + 'w342' + tmdbResult['poster_path']
+
+                if tmdbResult['backdrop_path'] != None:
+                    tmdbBackdrop = tmdbBaseURL + 'original' + tmdbResult['backdrop_path']
+
+                if tmdbResult.get('vote_average'):
+                        tmdbVoteAverage = float(tmdbResult['vote_average'])
+
+                if tmdbMovie == True and tmdbResult.get('release_date'):
+                    tmdbYear = int(tmdbResult['release_date'].split("-")[0])
+
+                if tmdbResult.get('genre_ids'):
+                    for genreResultID in tmdbResult['genre_ids']:
+                        for genreList in tmdbGenreData['genres']:
+                            if genreResultID == genreList['id']:
+                                if tmdbGenres == None:
+                                    tmdbGenres = genreList['name']
+                                else:
+                                    tmdbGenres = tmdbGenres + ", " + genreList['name']
+            break
 
     return { 'poster': tmdbPoster, 'backdrop': tmdbBackdrop, 'year': tmdbYear, 'vote_average': tmdbVoteAverage, 'genres': tmdbGenres}
