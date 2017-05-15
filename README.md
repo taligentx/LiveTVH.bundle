@@ -1,6 +1,14 @@
 # LiveTVH.bundle
 LiveTVH provides live TV streaming for [Plex](https://plex.tv) via [Tvheadend](https://tvheadend.org), including metadata from Tvheadend's EPG, [theTVDB](https://thetvdb.com), and [The Movie DB](https://www.themoviedb.org).
 
+## Release notes
+* 2017.05.14 - 1.1
+  * EPG is no longer hard set - the number of EPG items requested is now based on the number of channels and hours of EPG data necessary (up to a maximum of 10,000 items or 10MB of data).
+  * Thumbnails fallback to a channel logo when a show matches theTVDB but does not have a poster.
+  * 12-hour time displays correctly on non-linux platforms.
+  * Year displays for movies (when available from TMDb).
+* 2017.05.10 - Initial release, 1.0
+
 ## Features
 * EPG displayed as a simple list within each channel description, with a configurable time period to display in 12/24 hour time.
 * Metadata and artwork lookup from theTVDB and The Movie DB, with asynchronous searches and loading to minimize channel list load times.  
@@ -49,4 +57,4 @@ LiveTVH provides live TV streaming for [Plex](https://plex.tv) via [Tvheadend](h
 * Plex Web currently does not display a detailed pre-play page - this is a bug/side effect of setting up the channels as movies instead of video clips to display posters correctly - channels can be played directly from the channel list.
 * Plex for Xbox One fails to play channels - this may be due to a [known Plex issue](https://forums.plex.tv/discussion/173008/known-issues-in-1-8-0#latest).
 * Metadata searches are not localized.
-* Plex does not provide options to flag a stream as interlaced - expect combing artifacts, unfortunately.
+* Plex does not provide options to flag a stream as interlaced - expect combing artifacts on Plex clients that do not support deinterlacing, unfortunately.
