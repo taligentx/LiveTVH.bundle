@@ -57,4 +57,4 @@ LiveTVH provides live TV streaming for [Plex](https://plex.tv) via [Tvheadend](h
 * Plex Web currently does not display a detailed pre-play page - this is a bug/side effect of setting up the channels as movies instead of video clips to display posters correctly - channels can be played directly from the channel list.
 * Plex for Xbox One fails to play channels - this may be due to a [known Plex issue](https://forums.plex.tv/discussion/173008/known-issues-in-1-8-0#latest).
 * Metadata searches are not localized.
-* Plex does not provide options to flag a stream as interlaced - expect combing artifacts, unfortunately.
+* Plex does not provide options to flag a stream as interlaced - expect combing artifacts on Plex clients that do not support deinterlacing, unfortunately.
