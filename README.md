@@ -2,12 +2,12 @@
 LiveTVH provides live TV streaming for [Plex](https://plex.tv) via [Tvheadend](https://tvheadend.org), including metadata from Tvheadend's EPG, [theTVDB](https://thetvdb.com), and [The Movie DB](https://www.themoviedb.org).
 
 ## Release notes
-* 2017.05.14 - 1.1
+* 2017.05.14 - [LiveTVH 1.1](https://github.com/taligentx/LiveTVH.bundle/releases/tag/v1.1)
   * EPG is no longer hard set - the number of EPG items requested is now based on the number of channels and hours of EPG data necessary (up to a maximum of 10,000 items or 10MB of data).
   * Thumbnails fallback to a channel logo when a show matches theTVDB but does not have a poster.
   * 12-hour time displays correctly on non-linux platforms.
   * Year displays for movies (when available from TMDb).
-* 2017.05.10 - Initial release, 1.0
+* 2017.05.10 - Initial release 1.0
 
 ## Features
 * EPG displayed as a simple list within each channel description, with a configurable time period to display in 12/24 hour time.
@@ -30,7 +30,9 @@ LiveTVH provides live TV streaming for [Plex](https://plex.tv) via [Tvheadend](h
 ![Plex iOS Screenshot](https://cloud.githubusercontent.com/assets/12835671/25927072/dbecdd3c-35b8-11e7-80d9-056e59088501.jpg)
 
 ## Setup
-1. Download and unzip LiveTVH.bundle (or clone the repository) to the [Plex Media Server/Plug-ins](https://support.plex.tv/hc/en-us/articles/201106098-How-do-I-find-the-Plug-Ins-folder-) directory, and rename (if necessary) to `LiveTVH.bundle`.
+1. Download and unzip the current release of LiveTVH.bundle to the [Plex Media Server/Plug-ins](https://support.plex.tv/hc/en-us/articles/201106098-How-do-I-find-the-Plug-Ins-folder-) directory:
+  https://github.com/taligentx/LiveTVH.bundle/releases
+  
 2. Set the LiveTVH preferences with the Tvheadend local or remotely accessible IP address/hostname, username, and password.
 
    ![Prefs Screenshot](https://cloud.githubusercontent.com/assets/12835671/25927076/df92f73c-35b8-11e7-99d2-5250e964cc04.jpg)
