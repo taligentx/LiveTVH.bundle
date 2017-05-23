@@ -3,7 +3,7 @@
         "id":       "tvhAddress",
         "label":    "tvhAddress",
         "type":     "text",
-        "default":  "http://localhost:9981"
+        "default":  "http://address:9981"
     },
     {
         "id":       "tvhUser",
@@ -35,6 +35,12 @@
         "label":    "pref24Time",
         "type":     "bool",
         "default":  "true"
+    },
+    {
+        "id":       "prefPageCount",
+        "label":    "prefPageCount",
+        "type":     "text",
+        "default":  "30"
     },
     {
         "id":       "prefEPGCount",
