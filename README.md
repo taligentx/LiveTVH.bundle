@@ -59,7 +59,7 @@ LiveTVH provides live TV streaming for [Plex](https://plex.tv) via [Tvheadend](h
   
   ![Tvheadend Channel Tags Screenshot](https://cloud.githubusercontent.com/assets/12835671/26338051/e0cb75dc-3f42-11e7-85a0-7af80e425a21.png)
 
-* LiveTVH implements channels and recordings (for playback only).  Otherwise, recordings will need to be managed within Tvheadend or by using [Plex DVR](https://www.plex.tv/features/dvr) and [tvhProxy](https://github.com/jkaberg/tvhProxy)).
+* LiveTVH implements channels and playback of Tvheadend recordings.  New recordings can be managed within Tvheadend or switching recordings to [Plex DVR](https://www.plex.tv/features/dvr) and [tvhProxy](https://github.com/jkaberg/tvhProxy)).
 
 * Channels will take a bit of time to load initially while metadata is fetched and speed up over time as images and metadata requests are stored in the cache (up to 30 days cache) - 20-30 channels per page works reasonably well.
 
