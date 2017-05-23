@@ -7,6 +7,9 @@
     "tvhProfile":               "Streaming profile:",
     "prefChannelNumbers":       "Display channel numbers",
     "pref24Time":               "Display 24-hour time",
+    "prefPageCount":            "Number of channels to display per page:",
     "prefEPGCount":             "Number of hours/entries of upcoming shows to display:",
-    "prefMetadata":             "Display artwork and metadata from theTVDB and The Movie DB"
+    "prefMetadata":             "Display artwork and metadata from theTVDB and The Movie DB",
+    "next":                     "Next...",
+    "recordings":               "Recordings"
 }
