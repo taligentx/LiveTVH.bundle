@@ -118,6 +118,7 @@ def MainMenu():
     # Tags are used as a manual method to identify codecs for each channel: H264-AAC, MPEG2-AC3, MPEG2
     tvhTagsData = None
     tvhTagUUID_H264AAC = None
+    tvhTagUUID_H264MP2 = None
     tvhTagUUID_MPEG2AC3 = None
     tvhTagUUID_MPEG2 = None
     tvhTagsURL = '%s/api/channeltag/grid?start=0&limit=100000' % tvhAddress
@@ -132,6 +133,8 @@ def MainMenu():
             for tvhTagEntry in tvhTagsData['entries']:
                 if tvhTagEntry['name'].lower() == 'H264-AAC'.lower():
                     tvhTagUUID_H264AAC = tvhTagEntry['uuid']
+                elif tvhTagEntry['name'].lower() == 'H264-MP2'.lower():
+                    tvhTagUUID_H264MP2 = tvhTagEntry['uuid']
                 elif tvhTagEntry['name'].lower() == 'MPEG2-AC3'.lower():
                     tvhTagUUID_MPEG2AC3 = tvhTagEntry['uuid']
                 elif tvhTagEntry['name'].lower() == 'MPEG2'.lower():
@@ -242,11 +245,13 @@ def MainMenu():
                 genres = ' '
 
                 # Set channel codec using Tvheadend channel tags
-                if tvhTagUUID_H264AAC or tvhTagUUID_MPEG2AC3 or tvhTagUUID_MPEG2:
+                if tvhTagUUID_H264AAC or tvhTagUUID_H264MP2 or tvhTagUUID_MPEG2AC3 or tvhTagUUID_MPEG2:
                     try:
                         for tvhChannelTagEntry in tvhChannel['tags']:
                             if tvhChannelTagEntry == tvhTagUUID_H264AAC:
                                 streamCodec = 'H264AAC'
+                            elif tvhChannelTagEntry == tvhTagUUID_H264MP2:
+                                streamCodec = 'H264MP2'
                             elif tvhChannelTagEntry == tvhTagUUID_MPEG2AC3:
                                 streamCodec = 'MPEG2AC3'
                             elif tvhChannelTagEntry == tvhTagUUID_MPEG2:
@@ -463,6 +468,7 @@ def MainMenu():
                         key=Callback(
                             recordings,
                             tvhTagUUID_H264AAC=tvhTagUUID_H264AAC,
+                            tvhTagUUID_H264MP2=tvhTagUUID_H264MP2,
                             tvhTagUUID_MPEG2AC3=tvhTagUUID_MPEG2AC3,
                             tvhTagUUID_MPEG2=tvhTagUUID_MPEG2),
                         title=L('recordings'),
@@ -481,6 +487,7 @@ def MainMenu():
                             key=Callback(
                                 recordings,
                                 tvhTagUUID_H264AAC=tvhTagUUID_H264AAC,
+                                tvhTagUUID_H264MP2=tvhTagUUID_H264MP2,
                                 tvhTagUUID_MPEG2AC3=tvhTagUUID_MPEG2AC3,
                                 tvhTagUUID_MPEG2=tvhTagUUID_MPEG2),
                             title=L('recordings'),
@@ -536,6 +543,20 @@ def channel(
                 audio_channels = 2,
                 optimized_for_streaming = True)])
 
+    channelMediaDataH264MP2 = dict(
+        items = [
+            MediaObject(
+                parts = [PartObject(key=Callback(stream, streamURL=streamURL))],
+                video_resolution = '1080',
+                container = 'mpegts',
+                bitrate = 10000,
+                width = 1920,
+                height = 1080,
+                video_codec = 'h264',
+                audio_codec = 'mp2',
+                audio_channels = 2,
+                optimized_for_streaming = True)])
+
     channelMediaDataMPEG2AC3 = dict(
         items = [
             MediaObject(
@@ -562,6 +583,8 @@ def channel(
 
     if streamCodec == 'H264AAC':
         channelData.update(channelMediaDataH264AAC)
+    elif streamCodec == 'H264MP2':
+        channelData.update(channelMediaDataH264MP2)
     elif streamCodec == 'MPEG2AC3':
         channelData.update(channelMediaDataMPEG2AC3)
     elif streamCodec == 'MPEG2':
@@ -669,7 +692,7 @@ def stream(streamURL):
 
 # Build the Tvheadend recordings list
 @route(PREFIX + '/recordings', startCount=int)
-def recordings(tvhTagUUID_H264AAC, tvhTagUUID_MPEG2AC3, tvhTagUUID_MPEG2, startCount=0):
+def recordings(tvhTagUUID_H264AAC, tvhTagUUID_H264MP2, tvhTagUUID_MPEG2AC3, tvhTagUUID_MPEG2, startCount=0):
     nextStartCount = startCount + int(Prefs['prefPageCount'])
     recordingsContainer = ObjectContainer(title1=L('recordings'), no_cache=True)
 
