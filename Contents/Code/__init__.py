@@ -517,7 +517,8 @@ def channel(
         year = year,
         rating = rating,
         content_rating = content_rating,
-        genres = [genres])
+        genres = [genres]),
+        duration = 86400000
 
     channelMediaData = dict(
         items = [
