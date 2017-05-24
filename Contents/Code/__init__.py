@@ -33,6 +33,8 @@ tvdbToken = None
 tmdbBaseURL = None
 tmdbGenreData = None
 
+debug = True
+
 def Start():
     Log.Info('LiveTVH version: ' + liveTVHVersion)
     setPrefs()
@@ -114,13 +116,9 @@ def MainMenu():
         errorContainer.add(DirectoryObject(title=L('channelsUnavailable')))
         return errorContainer
 
-    # Request channel tags from Tvheadend
-    # Tags are used as a manual method to identify codecs for each channel: H264-AAC, MPEG2-AC3, MPEG2
+    # Request and set channel tags from Tvheadend
+    # Tags are used as a manual method to identify codecs for each channel: H264-AAC, H264-MP2, MPEG2-AC3, MPEG2
     tvhTagsData = None
-    tvhTagUUID_H264AAC = None
-    tvhTagUUID_H264MP2 = None
-    tvhTagUUID_MPEG2AC3 = None
-    tvhTagUUID_MPEG2 = None
     tvhTagsURL = '%s/api/channeltag/grid?start=0&limit=100000' % tvhAddress
 
     try:
@@ -128,17 +126,21 @@ def MainMenu():
     except Exception as e:
         Log.Warn('Error retrieving Tvheadend channel tags data: ' + str(e))
 
+    tvhCodecTags = {}
     try:
         if tvhTagsData:
             for tvhTagEntry in tvhTagsData['entries']:
                 if tvhTagEntry['name'].lower() == 'H264-AAC'.lower():
-                    tvhTagUUID_H264AAC = tvhTagEntry['uuid']
+                    tvhCodecTags['H264-AAC'] = tvhTagEntry['uuid']
+
                 elif tvhTagEntry['name'].lower() == 'H264-MP2'.lower():
-                    tvhTagUUID_H264MP2 = tvhTagEntry['uuid']
+                    tvhCodecTags['H264-MP2'] = tvhTagEntry['uuid']
+
                 elif tvhTagEntry['name'].lower() == 'MPEG2-AC3'.lower():
-                    tvhTagUUID_MPEG2AC3 = tvhTagEntry['uuid']
+                    tvhCodecTags['MPEG2-AC3'] = tvhTagEntry['uuid']
+
                 elif tvhTagEntry['name'].lower() == 'MPEG2'.lower():
-                    tvhTagUUID_MPEG2 = tvhTagEntry['uuid']
+                    tvhCodecTags['MPEG2'] = tvhTagEntry['uuid']
 
     except Exception as e:
         Log.Warn('Error parsing Tvheadend channel tags data: ' + str(e))
@@ -245,17 +247,12 @@ def MainMenu():
                 genres = ' '
 
                 # Set channel codec using Tvheadend channel tags
-                if tvhTagUUID_H264AAC or tvhTagUUID_H264MP2 or tvhTagUUID_MPEG2AC3 or tvhTagUUID_MPEG2:
+                if tvhCodecTags:
                     try:
                         for tvhChannelTagEntry in tvhChannel['tags']:
-                            if tvhChannelTagEntry == tvhTagUUID_H264AAC:
-                                streamCodec = 'H264AAC'
-                            elif tvhChannelTagEntry == tvhTagUUID_H264MP2:
-                                streamCodec = 'H264MP2'
-                            elif tvhChannelTagEntry == tvhTagUUID_MPEG2AC3:
-                                streamCodec = 'MPEG2AC3'
-                            elif tvhChannelTagEntry == tvhTagUUID_MPEG2:
-                                streamCodec = 'MPEG2'
+                            for tvhCodecTag, tvhCodecTagUUID in tvhCodecTags.items():
+                                if tvhChannelTagEntry == tvhCodecTagUUID:
+                                    streamCodec = tvhCodecTag
                     except: pass
 
                 # Set channel metadata using Tvheadend EPG info
@@ -467,10 +464,7 @@ def MainMenu():
                     DirectoryObject(
                         key=Callback(
                             recordings,
-                            tvhTagUUID_H264AAC=tvhTagUUID_H264AAC,
-                            tvhTagUUID_H264MP2=tvhTagUUID_H264MP2,
-                            tvhTagUUID_MPEG2AC3=tvhTagUUID_MPEG2AC3,
-                            tvhTagUUID_MPEG2=tvhTagUUID_MPEG2),
+                            tvhCodecTags=tvhCodecTags),
                         title=L('recordings'),
                         thumb=R('LiveTVH-recording.png')))
 
@@ -486,10 +480,7 @@ def MainMenu():
                         DirectoryObject(
                             key=Callback(
                                 recordings,
-                                tvhTagUUID_H264AAC=tvhTagUUID_H264AAC,
-                                tvhTagUUID_H264MP2=tvhTagUUID_H264MP2,
-                                tvhTagUUID_MPEG2AC3=tvhTagUUID_MPEG2AC3,
-                                tvhTagUUID_MPEG2=tvhTagUUID_MPEG2),
+                                tvhCodecTags=tvhCodecTags),
                             title=L('recordings'),
                             thumb=R('LiveTVH-recording.png')))
 
@@ -504,6 +495,12 @@ def MainMenu():
 def channel(
         channelType, title, uuid, streamURL, streamCodec, thumb, fallbackThumb, art, summary, tagline, source_title, year,
         rating, content_rating, genres, container=False, checkFiles=0, **kwargs):
+
+    if debug:
+        Log('title: ' + str(title))
+        Log('uuid: ' + str(uuid))
+        Log('streamURL: ' + str(streamURL))
+        Log('streamCodec: ' + str(streamCodec))
 
     channelMetadata = dict(
         key=Callback(
@@ -581,14 +578,18 @@ def channel(
     # Build channel data with the codec specified in the Tvheadend channel tag if available
     channelData = channelMetadata.copy()
 
-    if streamCodec == 'H264AAC':
+    if streamCodec == 'H264-AAC':
         channelData.update(channelMediaDataH264AAC)
-    elif streamCodec == 'H264MP2':
+
+    elif streamCodec == 'H264-MP2':
         channelData.update(channelMediaDataH264MP2)
-    elif streamCodec == 'MPEG2AC3':
+
+    elif streamCodec == 'MPEG2-AC3':
         channelData.update(channelMediaDataMPEG2AC3)
+
     elif streamCodec == 'MPEG2':
         channelData.update(channelMediaDataMPEG2)
+
     else:
         channelData.update(channelMediaData)
 
@@ -691,8 +692,8 @@ def stream(streamURL):
 
 
 # Build the Tvheadend recordings list
-@route(PREFIX + '/recordings', startCount=int)
-def recordings(tvhTagUUID_H264AAC, tvhTagUUID_H264MP2, tvhTagUUID_MPEG2AC3, tvhTagUUID_MPEG2, startCount=0):
+@route(PREFIX + '/recordings', tvhCodecTags=dict, startCount=int)
+def recordings(tvhCodecTags, startCount=0):
     nextStartCount = startCount + int(Prefs['prefPageCount'])
     recordingsContainer = ObjectContainer(title1=L('recordings'), no_cache=True)
 
@@ -763,16 +764,15 @@ def recordings(tvhTagUUID_H264AAC, tvhTagUUID_H264MP2, tvhTagUUID_MPEG2AC3, tvhT
             recordingTime = time.strftime('%B %d, %Y', time.localtime(tvhRecording['start']))
 
         # Set the recording codec based on the Tvheadend channel tags
-        for tvhChannel in tvhChannelsData['entries']:
-            if tvhChannel['uuid'] == tvhRecording['channel']:
-                for tvhChannelTagEntry in tvhChannel['tags']:
-                    if tvhChannelTagEntry == tvhTagUUID_H264AAC:
-                        streamCodec = 'H264AAC'
-                    elif tvhChannelTagEntry == tvhTagUUID_MPEG2AC3:
-                        streamCodec = 'MPEG2AC3'
-                    elif tvhChannelTagEntry == tvhTagUUID_MPEG2:
-                        streamCodec = 'MPEG2'
-                break
+        try:
+            for tvhChannel in tvhChannelsData['entries']:
+                if tvhChannel['uuid'] == tvhRecording['channel']:
+                    for tvhChannelTagEntry in tvhChannel['tags']:
+                        for tvhCodecTag, tvhCodecTagUUID in tvhCodecTags.items():
+                            if tvhChannelTagEntry == tvhCodecTagUUID:
+                                streamCodec = tvhCodecTag
+                    break
+        except: pass
 
         # Set the channel object type - this determines if thumbnails are displayed as posters or video clips
         # Plex for Roku only displays source_title for VideoClipObjects
@@ -855,10 +855,8 @@ def recordings(tvhTagUUID_H264AAC, tvhTagUUID_H264MP2, tvhTagUUID_MPEG2AC3, tvhT
     if len(tvhRecordingsData['entries']) > nextStartCount:
         recordingsContainer.add(NextPageObject(
             key=Callback(
-                recordings, 
-                tvhTagUUID_H264AAC=tvhTagUUID_H264AAC,
-                tvhTagUUID_MPEG2AC3=tvhTagUUID_MPEG2AC3,
-                tvhTagUUID_MPEG2=tvhTagUUID_MPEG2,
+                recordings,
+                tvhCodecTags=tvhCodecTags,
                 startCount=nextStartCount),
             title=L('next'),
             thumb=R('LiveTVH-next.png')))

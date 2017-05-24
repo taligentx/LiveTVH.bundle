@@ -18,6 +18,7 @@ LiveTVH provides live TV streaming for [Plex](https://plex.tv) via [Tvheadend](h
   * Bugfix: Thumbnails fallback to a channel logo when a show matches theTVDB but does not have a poster.
   * Bugfix: 12-hour time displays correctly on non-linux platforms.
   * Bugfix: Year displays for movies (when available from TMDb).
+
 * 2017.05.10 - Initial release 1.0
 
 ## Features
