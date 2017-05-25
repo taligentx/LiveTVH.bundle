@@ -123,6 +123,7 @@ def MainMenu():
 
     try:
         tvhTagsData = JSON.ObjectFromURL(url=tvhTagsURL, headers=tvhHeaders, values=None, cacheTime=channelDataCacheTime)
+        if debug: Log.Debug('tvhTagsData: ' + str(tvhTagsData))
     except Exception as e:
         Log.Warn('Error retrieving Tvheadend channel tags data: ' + str(e))
 
@@ -135,6 +136,9 @@ def MainMenu():
 
                 elif tvhTagEntry['name'].lower() == 'H264-MP2'.lower():
                     tvhCodecTags['H264-MP2'] = tvhTagEntry['uuid']
+
+                elif tvhTagEntry['name'].lower() == 'H264-AC3'.lower():
+                    tvhCodecTags['H264-AC3'] = tvhTagEntry['uuid']
 
                 elif tvhTagEntry['name'].lower() == 'MPEG2-AC3'.lower():
                     tvhCodecTags['MPEG2-AC3'] = tvhTagEntry['uuid']
@@ -409,7 +413,7 @@ def MainMenu():
                                     summary = metadataResults['zap2itMissingID'] + ' | ' + summary
 
                             # Check the EPG entry for a thumbnail
-                            if tvhEPGEntry.get('image') and tvhEPGEntry['image'].startswith('http') and thumb is None:
+                            if tvhEPGEntry.get('image') and tvhEPGEntry['image'].startswith('http'):
                                 epgThumb = tvhEPGEntry['image']
 
                 # Use EPG thumbnails from Tvheadend if a thumbnail is not available from the metadata providers
@@ -490,7 +494,7 @@ def MainMenu():
     return channels()
 
 
-# Build the channel as a MovieObject
+# Build the channel
 @route(PREFIX + '/channel', year=int, rating=float, container=bool, checkFiles=int)
 def channel(
         channelType, title, uuid, streamURL, streamCodec, thumb, fallbackThumb, art, summary, tagline, source_title, year,
@@ -555,6 +559,20 @@ def channel(
                 audio_channels = 2,
                 optimized_for_streaming = True)])
 
+    channelMediaDataH264AC3 = dict(
+        items = [
+            MediaObject(
+                parts = [PartObject(key=Callback(stream, streamURL=streamURL))],
+                video_resolution = '1080',
+                container = 'mpegts',
+                bitrate = 10000,
+                width = 1920,
+                height = 1080,
+                video_codec = 'h264',
+                audio_codec = 'ac3',
+                audio_channels = 2,
+                optimized_for_streaming = True)])
+
     channelMediaDataMPEG2AC3 = dict(
         items = [
             MediaObject(
@@ -584,6 +602,9 @@ def channel(
 
     elif streamCodec == 'H264-MP2':
         channelData.update(channelMediaDataH264MP2)
+
+    elif streamCodec == 'H264-AC3':
+        channelData.update(channelMediaDataH264AC3)
 
     elif streamCodec == 'MPEG2-AC3':
         channelData.update(channelMediaDataMPEG2AC3)
