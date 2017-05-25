@@ -54,6 +54,8 @@ LiveTVH provides live TV streaming for [Plex](https://plex.tv) via [Tvheadend](h
 ## Notes
 * Codec identification - LiveTVH now uses Tvheadend channel tags to identify a channel's codecs and help Plex clients direct stream (tested with Plex Web and iOS).  Create and set one of the following channel tags in Tvheadend as appropriate for each channel (Tvheadend supports editing multiple selections to make this a quick update):
   * `H264-AAC` - many DVB and IPTV sources, may permit direct streaming on Plex Web and iOS.
+  * `H264-MP2`
+  * `H264-AC3`
   * `MPEG2-AC3` - ATSC and some DVB sources
   * `MPEG2` - some IPTV sources
   *  Setting the channel tag is not required - if a tag is not set, Plex will typically transcode as necessary.
