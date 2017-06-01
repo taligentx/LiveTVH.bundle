@@ -51,7 +51,7 @@ LiveTVH provides live TV streaming for [Plex](https://plex.tv) via [Tvheadend](h
   * Video tags: `H264`, `MPEG2`
   * Audio tags: `AAC`, `AC3`, `MP2`, `MP3`
   * Video and audio tags may be combined into single tags: `H264-AAC`, `H264-MP2`, etc.
-  * Only H264 and AAC can be direct streamed on Plex Web and iOS.  Setting the MPEG2 video tag is possible but not recommended - the Plex transcoder will handle different video resolutions better without it.
+  * Only `H264` and `AAC` can be direct streamed on Plex Web and iOS.  Setting the `MPEG2` video tag is possible but not recommended - the Plex transcoder will handle different video resolutions better without it.
   
   ![Tvheadend Channel Tags Screenshot](https://cloud.githubusercontent.com/assets/12835671/26338051/e0cb75dc-3f42-11e7-85a0-7af80e425a21.png)
 
