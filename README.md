@@ -22,19 +22,9 @@ LiveTVH provides live TV streaming for [Plex](https://plex.tv) via [Tvheadend](h
 * 2017.05.10 - Initial release 1.0
 
 ## Features
-* EPG displayed as a simple list within each channel description, with a configurable time period to display in 12/24 hour time.
-* Metadata and artwork lookup from theTVDB and The Movie DB, with asynchronous searches and loading to minimize channel list load times.  
-
-  If available through Tvheadend's EPG, searching theTVDB utilizes zap2it ID information for more exact matches and will fall back to searching by name if not available.
-  
-  If show artwork isn't available, LiveTVH will fallback to using images in the EPG data if available or Tvheadend's channel icons.
-* Customized for different clients to display metadata more efficiently - Plex clients vary quite a bit in which fields they choose to display!
-* Search results, metadata, and artwork caching - again, to minimize channel list load times.
-* Tvheadend recordings accessible for playback, including rich metadata lookup.
-* Tvheadend authentication info stored in HTTP headers where possible instead of being sent in the URL - this prevents the Tvheadend username and password from showing up in the Plex log files, for example.
-* Tvheadend stream URL checking for availability prior to sending the stream to the client - this prevents long timeouts on the client if Tvheadend does not have an available tuner.  This also sends the stream URL as an indirect object to Plex, which prevents the Tvheadend username and password from showing up in the Plex XML file.  
-
-  However, if the stream is direct played instead of running through the Plex Transcoder, the client will receive the username and password as part of the stream URL and show up in the clear in the client logs as Plex does not seem to support sending headers as part of the stream object.
+* Playback of Tvheadend video channels, audio channels, and recordings.
+* EPG displayed as a simple list within each channel description.
+* Metadata and artwork lookup from theTVDB (using EPG zap2it IDs if available) and The Movie DB.
 
 ## Screenshots
 ![Plex Web Posters Screenshot](https://cloud.githubusercontent.com/assets/12835671/26337954/21753de4-3f42-11e7-895d-005c4da6b0a5.jpg)
@@ -52,19 +42,19 @@ LiveTVH provides live TV streaming for [Plex](https://plex.tv) via [Tvheadend](h
 3. Watch!
 
 ## Notes
-* Codec identification - LiveTVH now uses Tvheadend channel tags to identify a channel's codecs and help Plex clients direct stream (tested with Plex Web and iOS).  Create and set one of the following channel tags in Tvheadend as appropriate for each channel (Tvheadend supports editing multiple selections to make this a quick update):
-  * `H264-AAC` - many DVB and IPTV sources, may permit direct streaming on Plex Web and iOS.
-  * `H264-MP2`
-  * `H264-AC3`
-  * `MPEG2-AC3` - ATSC and some DVB sources
-  * `MPEG2` - some IPTV sources
-  *  Setting the channel tag is not required - if a tag is not set, Plex will typically transcode as necessary.
+* Channels will take a bit of time to load initially while metadata is fetched and speed up over time as the cache is built up (up to 30 days).  20-30 channels per page works reasonably well.
+
+* Recordings are available for playback, managing recordings will need to be handled outside of Plex, or by using [Plex DVR](https://www.plex.tv/features/dvr) and [tvhProxy](https://github.com/jkaberg/tvhProxy)).
+
+* Codec identification for direct streaming uses Tvheadend channel tags to help Plex clients direct stream (tested with Plex Web and iOS).  Create and set the following channel tags in Tvheadend as appropriate for each channel (Tvheadend supports editing multiple selections to make this a quick update):
+  * Video tags: `H264`, `MPEG2`
+  * Audio tags: `AAC`, `AC3`, `MP2`, `MP3`
+  * Video and audio tags may be combined: `H264-AAC`, `H264-MP2`, etc.
+  * Setting the codec tags is not required - Plex will transcode as necessary.
   
   ![Tvheadend Channel Tags Screenshot](https://cloud.githubusercontent.com/assets/12835671/26338051/e0cb75dc-3f42-11e7-85a0-7af80e425a21.png)
 
-* LiveTVH implements channels and playback of Tvheadend recordings.  New recordings can be managed within Tvheadend or switching recordings to [Plex DVR](https://www.plex.tv/features/dvr) and [tvhProxy](https://github.com/jkaberg/tvhProxy)).
-
-* Channels will take a bit of time to load initially while metadata is fetched and speed up over time as images and metadata requests are stored in the cache (up to 30 days cache) - 20-30 channels per page works reasonably well.
+* Radio (audio-only) channels are also identified using Tvheadend channel tags - create and set a `Radio` tag in Tvheadend on the appropriate channels for audio-only playback.
 
 * Watching remotely may require Tvheadend to have a public-facing address, as some clients will attempt to directly play the Tvheadend stream instead of running through the Plex transcoder.
   
@@ -78,10 +68,8 @@ LiveTVH provides live TV streaming for [Plex](https://plex.tv) via [Tvheadend](h
   
   ![zap2it Screenshot](https://cloud.githubusercontent.com/assets/12835671/25927080/e3b33ec6-35b8-11e7-8eb2-d0f0a3cfabc1.jpg)
 
-
-
 ## Known Issues
-* Plex Web currently does not display a detailed pre-play page - this is a bug/side effect of setting up the channels as movies instead of video clips to display posters correctly - channels can be played directly from the channel list.
+* Plex Web currently does not display a detailed pre-play page if metadata is enabled - this is a bug/side effect of setting up the channels as movies instead of video clips to display posters correctly. Channels can be played directly from the channel list.
 * Plex for Xbox One fails to play channels - this may be due to a [known Plex issue](https://forums.plex.tv/discussion/173008/known-issues-in-1-8-0#latest).
 * Metadata searches are not localized.
 * Plex does not provide options to flag a stream as interlaced - expect combing artifacts on Plex clients that do not support deinterlacing, unfortunately.

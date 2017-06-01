@@ -21,11 +21,11 @@ tvdbRetryInterval = CACHE_1MONTH
 
 # /Preferences
 
-liveTVHVersion = '1.2'
+liveTVHVersion = '1.3dev'
 TITLE = 'LiveTVH'
 PREFIX = '/video/livetvh'
-THUMB = 'LiveTVH-thumb.jpg'
-ART = 'LiveTVH-art.jpg'
+THUMB = 'icon-default.png'
+ART = 'art-default.jpg'
 tvhHeaders = None
 tvhAddress = None
 tvhReachable = False
@@ -97,8 +97,13 @@ def setPrefs():
 
 
 # Build the main menu
-@handler(PREFIX, TITLE, art=ART, thumb=THUMB)
+@handler(PREFIX, TITLE)
 def MainMenu():
+    
+    if debug:
+        Log.Debug('Client: ' + Client.Product)
+        Log.Debug('Platform: ' + Client.Platform)
+        Log.Debug('OS: ' + Platform.OS + ' ' + Platform.CPU)
 
     # Request channel data from Tvheadend
     tvhChannelsData = None
@@ -117,7 +122,7 @@ def MainMenu():
         return errorContainer
 
     # Request and set channel tags from Tvheadend
-    # Tags are used as a manual method to identify codecs for each channel: H264-AAC, H264-MP2, MPEG2-AC3, MPEG2
+    # Tags are used as a manual method to identify codecs and stream types (video/audio or audio-only) for each channel
     tvhTagsData = None
     tvhTagsURL = '%s/api/channeltag/grid?start=0&limit=100000' % tvhAddress
 
@@ -127,24 +132,36 @@ def MainMenu():
     except Exception as e:
         Log.Warn('Error retrieving Tvheadend channel tags data: ' + str(e))
 
-    tvhCodecTags = {}
+    tvhVideoTags = {}
+    tvhAudioTags = {}
+    tvhStreamTypeTags = {}
     try:
         if tvhTagsData:
             for tvhTagEntry in tvhTagsData['entries']:
-                if tvhTagEntry['name'].lower() == 'H264-AAC'.lower():
-                    tvhCodecTags['H264-AAC'] = tvhTagEntry['uuid']
 
-                elif tvhTagEntry['name'].lower() == 'H264-MP2'.lower():
-                    tvhCodecTags['H264-MP2'] = tvhTagEntry['uuid']
+                # Set video tags
+                if 'h264' in tvhTagEntry['name'].lower():
+                    tvhVideoTags.setdefault('h264', []).append(tvhTagEntry['uuid'])
 
-                elif tvhTagEntry['name'].lower() == 'H264-AC3'.lower():
-                    tvhCodecTags['H264-AC3'] = tvhTagEntry['uuid']
+                elif 'mpeg2' in tvhTagEntry['name'].lower():
+                    tvhVideoTags.setdefault('mpeg2video', []).append(tvhTagEntry['uuid'])
 
-                elif tvhTagEntry['name'].lower() == 'MPEG2-AC3'.lower():
-                    tvhCodecTags['MPEG2-AC3'] = tvhTagEntry['uuid']
+                # Set audio tags
+                if 'aac' in tvhTagEntry['name'].lower():
+                    tvhAudioTags.setdefault('aac', []).append(tvhTagEntry['uuid'])
 
-                elif tvhTagEntry['name'].lower() == 'MPEG2'.lower():
-                    tvhCodecTags['MPEG2'] = tvhTagEntry['uuid']
+                elif 'ac3' in tvhTagEntry['name'].lower():
+                    tvhAudioTags.setdefault('ac3', []).append(tvhTagEntry['uuid'])
+
+                elif 'mp2' in tvhTagEntry['name'].lower():
+                    tvhAudioTags.setdefault('mp2', []).append(tvhTagEntry['uuid'])
+
+                elif 'mp3' in tvhTagEntry['name'].lower():
+                    tvhAudioTags.setdefault('mp3', []).append(tvhTagEntry['uuid'])
+
+                # Set stream type tags
+                if 'radio' in tvhTagEntry['name'].lower():
+                    tvhStreamTypeTags.setdefault('radio', []).append(tvhTagEntry['uuid'])
 
     except Exception as e:
         Log.Warn('Error parsing Tvheadend channel tags data: ' + str(e))
@@ -237,7 +254,9 @@ def MainMenu():
 
                 uuid = tvhChannel['uuid']
                 streamURL = '/stream/channel/%s' % uuid
-                streamCodec = None
+                streamVideo = None
+                streamAudio = None
+                streamType = None
                 thumb = None
                 fallbackThumb = None
                 epgThumb = None
@@ -249,15 +268,35 @@ def MainMenu():
                 rating = None
                 content_rating = None
                 genres = ' '
+                artist = None
 
-                # Set channel codec using Tvheadend channel tags
-                if tvhCodecTags:
+                # Set channel attributes using Tvheadend channel tags
+                if tvhVideoTags or tvhAudioTags or tvhStreamStreamTypeTags:
                     try:
                         for tvhChannelTagEntry in tvhChannel['tags']:
-                            for tvhCodecTag, tvhCodecTagUUID in tvhCodecTags.items():
-                                if tvhChannelTagEntry == tvhCodecTagUUID:
-                                    streamCodec = tvhCodecTag
+
+                            for tvhVideoTag, tvhVideoTagUUID in tvhVideoTags.items():
+                                if tvhChannelTagEntry in tvhVideoTagUUID:
+                                    streamVideo = tvhVideoTag
+
+                            for tvhAudioTag, tvhAudioTagUUID in tvhAudioTags.items():
+                                if tvhChannelTagEntry in tvhAudioTagUUID:
+                                    streamAudio = tvhAudioTag
+
+                            for tvhStreamTypeTag, tvhStreamTypeTagUUID in tvhStreamTypeTags.items():
+                                if tvhChannelTagEntry in tvhStreamTypeTagUUID:
+                                    streamType = tvhStreamTypeTag
+
                     except: pass
+
+                # Set audio channel title metadata per client
+                if streamType == 'radio':
+                    if Client.Product == 'Plex Web':
+                        artist = title
+                        title = ' '
+                    else:
+                        title = title
+                        artist = ' '
 
                 # Set channel metadata using Tvheadend EPG info
                 if tvhEPGData:
@@ -268,19 +307,15 @@ def MainMenu():
                             and time.time() >= int(tvhEPGEntry['start'])
                             and tvhEPGEntry.get('title')):
 
-                            epgStart = None
-                            epgStop = None
-                            epgSubtitle = None
-                            epgSummary = None
-                            epgDescription = None
-                            epgDupedSubtitleSummary = False
+                            epgStart = int(tvhEPGEntry.get('start'))
+                            epgStop = int(tvhEPGEntry.get('stop'))
+                            epgSubtitle = tvhEPGEntry.get('subtitle')
+                            epgSummary = tvhEPGEntry.get('summary')
+                            epgDescription = tvhEPGEntry.get('description')
 
-                            if tvhEPGEntry.get('start'): epgStart = int(tvhEPGEntry['start'])
-                            if tvhEPGEntry.get('stop'): epgStop = int(tvhEPGEntry['stop'])
-                            if tvhEPGEntry.get('subtitle'): epgSubtitle = tvhEPGEntry['subtitle']
-                            if tvhEPGEntry.get('summary'): epgSummary = tvhEPGEntry['summary']
-                            if tvhEPGEntry.get('description'): epgDescription = tvhEPGEntry['description']
-                            if epgSubtitle and epgSummary and epgSubtitle == epgSummary: epgDupedSubtitleSummary = True # Some EPG providers duplicate info in these fields
+                            epgDupedSubtitleSummary = False
+                            if epgSubtitle and epgSummary and epgSubtitle == epgSummary:
+                                epgDupedSubtitleSummary = True # Some EPG providers duplicate info in these fields
 
                             # Set the show title
                             title = title + ': ' + tvhEPGEntry['title']
@@ -425,31 +460,39 @@ def MainMenu():
 
                 # Use channel icons from Tvheadend if no other thumbnail is available
                 try:
-                    if thumb is None and tvhChannel['icon_public_url'].startswith('imagecache'):
-                        thumb = '%s/%s' % (tvhAddress, tvhChannel['icon_public_url'])
+                    if thumb is None:
+                        if tvhChannel['icon_public_url'].startswith('imagecache'):
+                            thumb = '%s/%s' % (tvhAddress, tvhChannel['icon_public_url'])
+                        elif tvhChannel['icon_public_url'].startswith('http'):
+                            thumb = tvhChannel['icon_public_url']
 
                     if tvhChannel['icon_public_url'].startswith('imagecache'):
-                        fallbackThumb ='%s/%s' % (tvhAddress, tvhChannel['icon_public_url'])
+                        fallbackThumb = '%s/%s' % (tvhAddress, tvhChannel['icon_public_url'])
+                    elif tvhChannel['icon_public_url'].startswith('http'):
+                        fallbackThumb = tvhChannel['icon_public_url']
 
                 except: pass
 
                 # Set the channel object type - this determines if thumbnails are displayed as posters or video clips
                 # Plex for Roku only displays source_title for VideoClipObjects
-                if Client.Product == 'Plex Home Theater':
-                    channelType = 'MovieObject'
-                elif Client.Product == 'Plex for Roku' or not Prefs['prefMetadata']:
-                    channelType = 'VideoClipObject'
+                if streamType == 'radio':
+                    channelType = 'TrackObject'
                 else:
-                    channelType = 'MovieObject'
+                    if Client.Product == 'Plex Home Theater':
+                        channelType = 'MovieObject'
+                    elif Client.Product == 'Plex for Roku' or not Prefs['prefMetadata']:
+                        channelType = 'VideoClipObject'
+                    else:
+                        channelType = 'MovieObject'
 
                 # Build and add the channel to the main menu
                 pageContainer.add(
                     channel(
                         channelType=channelType,
                         title=title,
-                        uuid=uuid,
                         streamURL=streamURL,
-                        streamCodec=streamCodec,
+                        streamVideo=streamVideo,
+                        streamAudio=streamAudio,
                         thumb=thumb,
                         fallbackThumb=fallbackThumb,
                         art=art,
@@ -459,24 +502,26 @@ def MainMenu():
                         year=year,
                         rating=rating,
                         content_rating=content_rating,
-                        genres=genres))
+                        genres=genres,
+                        artist=artist))
 
             # Add recordings and preferences to the end of the channel list because several clients have display
-            # issues when these types of objects are at the beginning of the container            
+            # issues when these types of objects are at the beginning of the container
             if len(tvhChannelsData['entries']) < int(Prefs['prefPageCount']):
                 pageContainer.add(
                     DirectoryObject(
                         key=Callback(
                             recordings,
-                            tvhCodecTags=tvhCodecTags),
+                            tvhVideoTags=tvhVideoTags,
+                            tvhAudioTags=tvhAudioTags),
                         title=L('recordings'),
-                        thumb=R('LiveTVH-recording.png')))
+                        thumb=R('recordings.png')))
 
                 pageContainer.add(PrefsObject(title=L('preferences')))
 
             # Paginate the channel list
             if len(tvhChannelsData['entries']) > nextStartCount:
-                pageContainer.add(NextPageObject(key=Callback(channels, startCount=nextStartCount), title=L('next'), thumb=R('LiveTVH-next.png')))
+                pageContainer.add(NextPageObject(key=Callback(channels, startCount=nextStartCount), title=L('next'), thumb=R('next.png')))
 
                 # Add recordings and preferences to the end of the first page of the channel list when paginated
                 if tvhRecordingsData and startCount == 0:
@@ -484,9 +529,10 @@ def MainMenu():
                         DirectoryObject(
                             key=Callback(
                                 recordings,
-                                tvhCodecTags=tvhCodecTags),
+                                tvhVideoTags=tvhVideoTags,
+                                tvhAudioTags=tvhAudioTags),
                             title=L('recordings'),
-                            thumb=R('LiveTVH-recording.png')))
+                            thumb=R('recordings.png')))
 
                     pageContainer.add(PrefsObject(title=L('preferences')))
 
@@ -497,21 +543,23 @@ def MainMenu():
 # Build the channel
 @route(PREFIX + '/channel', year=int, rating=float, container=bool, checkFiles=int)
 def channel(
-        channelType, title, uuid, streamURL, streamCodec, thumb, fallbackThumb, art, summary, tagline, source_title, year,
-        rating, content_rating, genres, container=False, checkFiles=0, **kwargs):
+        channelType, title, streamURL, streamVideo, streamAudio, thumb, fallbackThumb, art, summary, tagline, source_title, year,
+        rating, content_rating, genres, artist, container=False, checkFiles=0, **kwargs):
 
     if debug:
-        Log('title: ' + str(title))
-        Log('uuid: ' + str(uuid))
-        Log('streamURL: ' + str(streamURL))
-        Log('streamCodec: ' + str(streamCodec))
+        Log('Title: ' + str(title))
+        Log('Type: ' + str(channelType))
+        Log('Video: ' + str(streamVideo))
+        Log('Audio: ' + str(streamAudio))
 
-    channelMetadata = dict(
+    rating_key = ''.join(filter(str.isdigit, streamURL)) + str(int(time.time()))
+
+    videoChannelMetadata = dict(
         key=Callback(
-            channel, channelType=channelType, title=title, uuid=uuid, streamURL=streamURL, streamCodec=streamCodec, thumb=thumb, fallbackThumb=fallbackThumb,
-            art=art, summary=summary, tagline=tagline, source_title=source_title, year=year, rating=rating,
-            content_rating=content_rating, genres=genres, container=True, checkFiles=0, **kwargs),
-        rating_key = uuid,
+            channel, channelType=channelType, title=title, streamURL=streamURL, streamVideo=streamVideo, streamAudio=streamAudio, thumb=thumb,
+            fallbackThumb=fallbackThumb, art=art, summary=summary, tagline=tagline, source_title=source_title, year=year, rating=rating,
+            content_rating=content_rating, genres=genres, artist=artist, container=True, checkFiles=0, **kwargs),
+        rating_key = rating_key,
         title = title,
         thumb = Callback(image, url=thumb, fallback=fallbackThumb),
         art = Callback(image, url=art, fallback=R(ART)),
@@ -521,31 +569,23 @@ def channel(
         year = year,
         rating = rating,
         content_rating = content_rating,
-        genres = [genres],
-        duration = 86400000)
+        genres = [genres])
 
-    channelMediaData = dict(
-        items = [
-            MediaObject(
-                parts = [PartObject(key=Callback(stream, streamURL=streamURL))],
-                video_resolution = '1080',
-                optimized_for_streaming = True)])
+    audioChannelMetadata = dict(
+        key=Callback(
+            channel, channelType=channelType, title=title, streamURL=streamURL, streamVideo=streamVideo, streamAudio=streamAudio, thumb=thumb,
+            fallbackThumb=fallbackThumb, art=art, summary=summary, tagline=tagline, source_title=source_title, year=year, rating=rating,
+            content_rating=content_rating, genres=genres, artist=artist, container=True, checkFiles=0, **kwargs),
+        rating_key = streamURL,
+        thumb = Callback(image, url=thumb, fallback=fallbackThumb),
+        art = Callback(image, url=art, fallback=R(ART)),
+        title = title,
+        artist = artist,
+        rating = rating,
+        genres = [genres])
 
-    channelMediaDataH264AAC = dict(
-        items = [
-            MediaObject(
-                parts = [PartObject(key=Callback(stream, streamURL=streamURL))],
-                video_resolution = '1080',
-                container = 'mpegts',
-                bitrate = 10000,
-                width = 1920,
-                height = 1080,
-                video_codec = 'h264',
-                audio_codec = 'aac',
-                audio_channels = 2,
-                optimized_for_streaming = True)])
-
-    channelMediaDataH264MP2 = dict(
+    if streamVideo and streamAudio:
+        videoChannelMediaData = dict(
         items = [
             MediaObject(
                 parts = [PartObject(key=Callback(stream, streamURL=streamURL))],
@@ -554,138 +594,57 @@ def channel(
                 bitrate = 10000,
                 width = 1920,
                 height = 1080,
-                video_codec = 'h264',
-                audio_codec = 'mp2',
-                audio_channels = 2,
+                video_codec = streamVideo,
+                audio_codec = streamAudio,
                 optimized_for_streaming = True)])
-
-    channelMediaDataH264AC3 = dict(
-        items = [
-            MediaObject(
-                parts = [PartObject(key=Callback(stream, streamURL=streamURL))],
-                video_resolution = '1080',
-                container = 'mpegts',
-                bitrate = 10000,
-                width = 1920,
-                height = 1080,
-                video_codec = 'h264',
-                audio_codec = 'ac3',
-                audio_channels = 2,
-                optimized_for_streaming = True)])
-
-    channelMediaDataMPEG2AC3 = dict(
-        items = [
-            MediaObject(
-                parts = [PartObject(key=Callback(stream, streamURL=streamURL))],
-                video_resolution = '1080',
-                container = 'mpegts',
-                video_codec = 'mpeg2video',
-                audio_codec = 'ac3',
-                optimized_for_streaming = True)])
-
-    channelMediaDataMPEG2 = dict(
-        items = [
-            MediaObject(
-                parts = [PartObject(key=Callback(stream, streamURL=streamURL))],
-                video_resolution = '1080',
-                container = 'mpegts',
-                video_codec = 'mpeg2video',
-                audio_codec = 'mp2',
-                audio_channels = 2,
-                optimized_for_streaming = True)])
-
-    # Build channel data with the codec specified in the Tvheadend channel tag if available
-    channelData = channelMetadata.copy()
-
-    if streamCodec == 'H264-AAC':
-        channelData.update(channelMediaDataH264AAC)
-
-    elif streamCodec == 'H264-MP2':
-        channelData.update(channelMediaDataH264MP2)
-
-    elif streamCodec == 'H264-AC3':
-        channelData.update(channelMediaDataH264AC3)
-
-    elif streamCodec == 'MPEG2-AC3':
-        channelData.update(channelMediaDataMPEG2AC3)
-
-    elif streamCodec == 'MPEG2':
-        channelData.update(channelMediaDataMPEG2)
 
     else:
-        channelData.update(channelMediaData)
+        videoChannelMediaData = dict(
+            items = [
+                MediaObject(
+                    parts = [PartObject(
+                        key=Callback(stream, streamURL=streamURL))],
+                    optimized_for_streaming = True)])
 
-    # Set the framework object type
-    if channelType == 'MovieObject':
-        channelObject = MovieObject(**channelData)
+    if channelType == 'TrackObject':
+        if streamAudio:
+            audioChannelMediaData = dict(
+                items = [
+                    MediaObject(
+                        parts = [PartObject(key=Callback(stream, streamURL=streamURL))],
+                        audio_codec = streamAudio,
+                        audio_channels = 2,
+                        optimized_for_streaming = True)])
 
-    elif channelType == 'VideoClipObject':
-        channelObject = VideoClipObject(**channelData)
+        else:
+            audioChannelMediaData = dict(
+                items = [
+                    MediaObject(
+                        parts = [PartObject(key=Callback(stream, streamURL=streamURL))],
+                        audio_channels = 2,
+                        optimized_for_streaming = True)])
+
+    # Build channel data with the codec specified in the Tvheadend channel tag if available
+    if channelType == 'TrackObject':
+        channelData = audioChannelMetadata.copy()
+        channelData.update(audioChannelMediaData)
+        channelObject = TrackObject(**channelData)
+
+    else:
+        channelData = videoChannelMetadata.copy()
+        channelData.update(videoChannelMediaData)
+
+        # Set the framework object type
+        if channelType == 'MovieObject':
+            channelObject = MovieObject(**channelData)
+
+        elif channelType == 'VideoClipObject':
+            channelObject = VideoClipObject(**channelData)
 
     if container:
         return ObjectContainer(objects=[channelObject])
     else:
         return channelObject
-
-
-# Search for images with fallback
-# theTVDB API requires a separate HTTP request for each piece of artwork, so the
-# channel list load time can be reduced by running the search asynchronously
-@route(PREFIX + '/image')
-def image(url=None, fallback=None):
-    if url is None and fallback is None:
-        return None
-
-    if 'api.thetvdb.com' in url:
-        tvdbHeaders = {'Authorization' : 'Bearer %s' % tvdbToken}
-        tvdbImageData = None
-
-        try:
-            tvdbImageData = JSON.ObjectFromURL(url=url, headers=tvdbHeaders, values=None, cacheTime=imageCacheTime)
-
-        except Ex.HTTPError as e:
-            if e.code == 404:
-                if fallback == R(ART):
-                    return Redirect(R(ART))
-
-                elif fallback:
-                    if tvhAddress in fallback:
-                        imageContent = HTTP.Request(url=fallback, headers=tvhHeaders, cacheTime=imageCacheTime, values=None).content
-                    else:
-                        imageContent = HTTP.Request(url=fallback, cacheTime=imageCacheTime, values=None).content
-
-                    return DataObject(imageContent, 'image/jpeg')
-
-                else: return None
-
-        if tvdbImageData:
-            for tvdbImageResult in tvdbImageData['data']:
-                url = 'http://thetvdb.com/banners/' + tvdbImageResult['fileName']
-                try:
-                    imageContent = HTTP.Request(url, cacheTime=imageCacheTime, values=None).content
-                    return DataObject(imageContent, 'image/jpeg')
-                except Exception as e:
-                    Log.Warn('Error retrieving image: ' + str(e))
-                    return None
-
-    elif tvhAddress in url:
-        try:
-            imageContent = HTTP.Request(url=url, headers=tvhHeaders, cacheTime=imageCacheTime, values=None).content
-            return DataObject(imageContent, 'image/jpeg')
-        except Exception as e:
-            Log.Warn('Error retrieving image: ' + str(e))
-            return None
-
-    elif url == R(ART):
-        return Redirect(R(ART))
-
-    else:
-        try:
-            imageContent = HTTP.Request(url, cacheTime=imageCacheTime, values=None).content
-            return DataObject(imageContent, 'image/jpeg')
-        except Exception as e:
-            Log.Warn('Error retrieving image: ' + str(e))
-            return None
 
 
 # Build the Tvheadend stream URL and verify availability
@@ -714,8 +673,8 @@ def stream(streamURL):
 
 
 # Build the Tvheadend recordings list
-@route(PREFIX + '/recordings', tvhCodecTags=dict, startCount=int)
-def recordings(tvhCodecTags, startCount=0):
+@route(PREFIX + '/recordings', tvhVideoTags=dict, tvhAudioTags=dict, startCount=int)
+def recordings(tvhVideoTags, tvhAudioTags, startCount=0):
     nextStartCount = startCount + int(Prefs['prefPageCount'])
     recordingsContainer = ObjectContainer(title1=L('recordings'), no_cache=True)
 
@@ -741,9 +700,8 @@ def recordings(tvhCodecTags, startCount=0):
 
         title = tvhRecording['disp_title']
         streamURL = '/' + tvhRecording['url']
-
-        uuid = streamURL
-        streamCodec = None
+        streamVideo = None
+        streamAudio = None
         thumb = None
         fallbackThumb = None
         art = R(ART)
@@ -754,6 +712,7 @@ def recordings(tvhCodecTags, startCount=0):
         rating = None
         content_rating = None
         genres = ' '
+        artist = None
 
         # Set recording time for recordings today
         if time.strftime('%Y%m%d', time.localtime()) == time.strftime('%Y%m%d', time.localtime(tvhRecording['start'])):
@@ -790,10 +749,15 @@ def recordings(tvhCodecTags, startCount=0):
             for tvhChannel in tvhChannelsData['entries']:
                 if tvhChannel['uuid'] == tvhRecording['channel']:
                     for tvhChannelTagEntry in tvhChannel['tags']:
-                        for tvhCodecTag, tvhCodecTagUUID in tvhCodecTags.items():
-                            if tvhChannelTagEntry == tvhCodecTagUUID:
-                                streamCodec = tvhCodecTag
-                    break
+
+                        for tvhVideoTag, tvhVideoTagUUID in tvhVideoTags.items():
+                            if tvhChannelTagEntry in tvhVideoTagUUID:
+                                streamVideo = tvhVideoTag
+
+                        for tvhAudioTag, tvhAudioTagUUID in tvhAudioTags.items():
+                            if tvhChannelTagEntry in tvhAudioTagUUID:
+                                streamAudio = tvhAudioTag
+
         except: pass
 
         # Set the channel object type - this determines if thumbnails are displayed as posters or video clips
@@ -859,9 +823,9 @@ def recordings(tvhCodecTags, startCount=0):
             channel(
                 channelType=channelType,
                 title=title,
-                uuid=uuid,
                 streamURL=streamURL,
-                streamCodec=streamCodec,
+                streamVideo=streamVideo,
+                streamAudio=streamAudio,
                 thumb=thumb,
                 fallbackThumb=fallbackThumb,
                 art=art,
@@ -871,7 +835,8 @@ def recordings(tvhCodecTags, startCount=0):
                 year=year,
                 rating=rating,
                 content_rating=content_rating,
-                genres=genres))
+                genres=genres,
+                artist=artist))
 
     # Paginate the channel list
     if len(tvhRecordingsData['entries']) > nextStartCount:
@@ -881,9 +846,69 @@ def recordings(tvhCodecTags, startCount=0):
                 tvhCodecTags=tvhCodecTags,
                 startCount=nextStartCount),
             title=L('next'),
-            thumb=R('LiveTVH-next.png')))
+            thumb=R('next.png')))
 
     return recordingsContainer
+
+
+# Search for images with fallback
+# theTVDB API requires a separate HTTP request for each piece of artwork, so the
+# channel list load time can be reduced by running the search asynchronously
+@route(PREFIX + '/image')
+def image(url=None, fallback=None):
+    if url is None and fallback is None:
+        return None
+
+    if 'api.thetvdb.com' in url:
+        tvdbHeaders = {'Authorization' : 'Bearer %s' % tvdbToken}
+        tvdbImageData = None
+
+        try:
+            tvdbImageData = JSON.ObjectFromURL(url=url, headers=tvdbHeaders, values=None, cacheTime=imageCacheTime)
+
+        except Ex.HTTPError as e:
+            if e.code == 404:
+                if fallback == R(ART):
+                    return Redirect(R(ART))
+
+                elif fallback:
+                    if tvhAddress in fallback:
+                        imageContent = HTTP.Request(url=fallback, headers=tvhHeaders, cacheTime=imageCacheTime, values=None).content
+                    else:
+                        imageContent = HTTP.Request(url=fallback, cacheTime=imageCacheTime, values=None).content
+
+                    return DataObject(imageContent, 'image/jpeg')
+
+                else: return None
+
+        if tvdbImageData:
+            for tvdbImageResult in tvdbImageData['data']:
+                url = 'http://thetvdb.com/banners/' + tvdbImageResult['fileName']
+                try:
+                    imageContent = HTTP.Request(url, cacheTime=imageCacheTime, values=None).content
+                    return DataObject(imageContent, 'image/jpeg')
+                except Exception as e:
+                    Log.Warn('Error retrieving image: ' + str(e))
+                    return None
+
+    elif tvhAddress in url:
+        try:
+            imageContent = HTTP.Request(url=url, headers=tvhHeaders, cacheTime=imageCacheTime, values=None).content
+            return DataObject(imageContent, 'image/jpeg')
+        except Exception as e:
+            Log.Warn('Error retrieving image: ' + str(e))
+            return None
+
+    elif url == R(ART):
+        return Redirect(R(ART))
+
+    else:
+        try:
+            imageContent = HTTP.Request(url, cacheTime=imageCacheTime, values=None).content
+            return DataObject(imageContent, 'image/jpeg')
+        except Exception as e:
+            Log.Warn('Error retrieving image: ' + str(e))
+            return None
 
 
 # Search for metadata
