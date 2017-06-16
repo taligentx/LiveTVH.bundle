@@ -47,11 +47,11 @@ LiveTVH provides live TV streaming for [Plex](https://plex.tv) via [Tvheadend](h
 
 * While Tvheadend recordings can be played, managing new recordings will need to be handled outside of Plex, or by using [Plex DVR](https://www.plex.tv/features/dvr) and [tvhProxy](https://github.com/jkaberg/tvhProxy)).
 
-* Direct streaming of H264 channels on Plex Web and iOS requires identifying the channel's codecs using Tvheadend channel tags.  Create and set channel tags in Tvheadend as appropriate for each H264 channel (Tvheadend supports editing multiple selections to make this a quick update):
-  * Video tags: `H264`, `MPEG2`
-  * Audio tags: `AAC`, `AC3`, `MP2`, `MP3`
+* Direct streaming of H264 channels on Plex Web, iOS, and Roku requires identifying the channel's codecs and resolution using Tvheadend channel tags.  Create and set channel tags in Tvheadend as appropriate for each H264 channel (Tvheadend supports editing multiple selections to make this a quick update):
+  * Video tags: `H264`, `MPEG2`, `HEVC`, `VP8`, `VP9`
+  * Audio tags: `AAC`, `AAC-LATM`, `AC3`, `EAC3`, `MP2`, `MP3`, `VORBIS`
   * Video and audio tags may be combined into single tags: `H264-AAC`, `H264-MP2`, etc.
-  * Only `H264` and `AAC` can be direct streamed on Plex Web and iOS.  Setting the `MPEG2` video tag is possible but not recommended - the Plex transcoder will handle different video resolutions better without it.
+  * Video resolution tags: `HDTV` (1080p), `720p`, `SDTV` (576p)
   
   ![Tvheadend Channel Tags Screenshot](https://cloud.githubusercontent.com/assets/12835671/26338051/e0cb75dc-3f42-11e7-85a0-7af80e425a21.png)
 
@@ -73,4 +73,4 @@ LiveTVH provides live TV streaming for [Plex](https://plex.tv) via [Tvheadend](h
 * Plex Web currently does not display a detailed pre-play page if metadata is enabled - this is a bug/side effect of setting up the channels as movies instead of video clips to display posters correctly. Channels can be played directly from the channel list.
 * Plex for Xbox One fails to play channels - this may be due to a [known Plex issue](https://forums.plex.tv/discussion/173008/known-issues-in-1-8-0#latest).
 * Metadata searches are not localized.
-* Plex does not provide options to flag a stream as interlaced - expect combing artifacts on Plex clients that do not support deinterlacing, unfortunately.
+* Plex does not provide options to flag a stream as interlaced in channels - expect combing artifacts on Plex clients that do not support deinterlacing, unfortunately.  Plex's native live TV viewing works with [tvhProxy](https://github.com/jkaberg/tvhProxy) and supports deinterlacing.

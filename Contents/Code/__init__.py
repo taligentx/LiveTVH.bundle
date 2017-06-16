@@ -101,9 +101,9 @@ def setPrefs():
 def MainMenu():
     
     if debug:
-        Log.Debug('Client: ' + Client.Product)
-        Log.Debug('Platform: ' + Client.Platform)
-        Log.Debug('OS: ' + Platform.OS + ' ' + Platform.CPU)
+        Log.Debug('Client: ' + str(Client.Product))
+        Log.Debug('Platform: ' + str(Client.Platform))
+        Log.Debug('OS: ' + str(Platform.OS) + ' ' + str(Platform.CPU))
 
     # Request channel data from Tvheadend
     tvhChannelsData = None
@@ -122,7 +122,7 @@ def MainMenu():
         return errorContainer
 
     # Request and set channel tags from Tvheadend
-    # Tags are used as a manual method to identify codecs and stream types (video/audio or audio-only) for each channel
+    # Tags are used as a manual method to identify video/audio attributes for each channel
     tvhTagsData = None
     tvhTagsURL = '%s/api/channeltag/grid?start=0&limit=100000' % tvhAddress
 
@@ -135,6 +135,7 @@ def MainMenu():
     tvhVideoTags = {}
     tvhAudioTags = {}
     tvhStreamTypeTags = {}
+    tvhResolutionTags = {}
     try:
         if tvhTagsData:
             for tvhTagEntry in tvhTagsData['entries']:
@@ -146,9 +147,24 @@ def MainMenu():
                 elif 'mpeg2' in tvhTagEntry['name'].lower():
                     tvhVideoTags.setdefault('mpeg2video', []).append(tvhTagEntry['uuid'])
 
+                elif 'hevc' in tvhTagEntry['name'].lower():
+                    tvhVideoTags.setdefault('hevc', []).append(tvhTagEntry['uuid'])
+
+                elif 'vp8' in tvhTagEntry['name'].lower():
+                    tvhVideoTags.setdefault('vp8', []).append(tvhTagEntry['uuid'])
+
+                elif 'vp9' in tvhTagEntry['name'].lower():
+                    tvhVideoTags.setdefault('vp9', []).append(tvhTagEntry['uuid'])
+
                 # Set audio tags
-                if 'aac' in tvhTagEntry['name'].lower():
+                if 'aac-latm' in tvhTagEntry['name'].lower():
+                    tvhAudioTags.setdefault('aac-latm', []).append(tvhTagEntry['uuid'])
+
+                elif 'aac' in tvhTagEntry['name'].lower():
                     tvhAudioTags.setdefault('aac', []).append(tvhTagEntry['uuid'])
+
+                elif 'eac3' in tvhTagEntry['name'].lower():
+                    tvhAudioTags.setdefault('eac3', []).append(tvhTagEntry['uuid'])
 
                 elif 'ac3' in tvhTagEntry['name'].lower():
                     tvhAudioTags.setdefault('ac3', []).append(tvhTagEntry['uuid'])
@@ -159,9 +175,24 @@ def MainMenu():
                 elif 'mp3' in tvhTagEntry['name'].lower():
                     tvhAudioTags.setdefault('mp3', []).append(tvhTagEntry['uuid'])
 
+                elif 'vorbis' in tvhTagEntry['name'].lower():
+                    tvhAudioTags.setdefault('vorbis', []).append(tvhTagEntry['uuid'])
+
                 # Set stream type tags
                 if 'radio' in tvhTagEntry['name'].lower():
                     tvhStreamTypeTags.setdefault('radio', []).append(tvhTagEntry['uuid'])
+
+
+                # Set resolution type tags
+                if 'hdtv' in tvhTagEntry['name'].lower() or '1080p' in tvhTagEntry['name'].lower():
+                    tvhResolutionTags.setdefault('1080p', []).append(tvhTagEntry['uuid'])
+
+                elif '720p' in tvhTagEntry['name'].lower():
+                    tvhResolutionTags.setdefault('720p', []).append(tvhTagEntry['uuid'])
+
+                elif 'sdtv' in tvhTagEntry['name'].lower() or '576p' in tvhTagEntry['name'].lower():
+                    tvhResolutionTags.setdefault('576p', []).append(tvhTagEntry['uuid'])
+
 
     except Exception as e:
         Log.Warn('Error parsing Tvheadend channel tags data: ' + str(e))
@@ -257,6 +288,7 @@ def MainMenu():
                 streamVideo = None
                 streamAudio = None
                 streamType = None
+                streamResolution = None
                 thumb = None
                 fallbackThumb = None
                 epgThumb = None
@@ -271,23 +303,25 @@ def MainMenu():
                 artist = None
 
                 # Set channel attributes using Tvheadend channel tags
-                if tvhVideoTags or tvhAudioTags or tvhStreamStreamTypeTags:
-                    try:
-                        for tvhChannelTagEntry in tvhChannel['tags']:
+                try:
+                    for tvhChannelTagEntry in tvhChannel['tags']:
 
-                            for tvhVideoTag, tvhVideoTagUUID in tvhVideoTags.items():
-                                if tvhChannelTagEntry in tvhVideoTagUUID:
-                                    streamVideo = tvhVideoTag
+                        for tvhVideoTag, tvhVideoTagUUID in tvhVideoTags.items():
+                            if tvhChannelTagEntry in tvhVideoTagUUID:
+                                streamVideo = tvhVideoTag
 
-                            for tvhAudioTag, tvhAudioTagUUID in tvhAudioTags.items():
-                                if tvhChannelTagEntry in tvhAudioTagUUID:
-                                    streamAudio = tvhAudioTag
+                        for tvhAudioTag, tvhAudioTagUUID in tvhAudioTags.items():
+                            if tvhChannelTagEntry in tvhAudioTagUUID:
+                                streamAudio = tvhAudioTag
 
-                            for tvhStreamTypeTag, tvhStreamTypeTagUUID in tvhStreamTypeTags.items():
-                                if tvhChannelTagEntry in tvhStreamTypeTagUUID:
-                                    streamType = tvhStreamTypeTag
+                        for tvhStreamTypeTag, tvhStreamTypeTagUUID in tvhStreamTypeTags.items():
+                            if tvhChannelTagEntry in tvhStreamTypeTagUUID:
+                                streamType = tvhStreamTypeTag
 
-                    except: pass
+                        for tvhResolutionTag, tvhResolutionTagUUID in tvhResolutionTags.items():
+                            if tvhChannelTagEntry in tvhResolutionTagUUID:
+                                streamResolution = tvhResolutionTag
+                except: pass
 
                 # Set audio channel title metadata per client
                 if streamType == 'radio':
@@ -493,6 +527,7 @@ def MainMenu():
                         streamURL=streamURL,
                         streamVideo=streamVideo,
                         streamAudio=streamAudio,
+                        streamResolution=streamResolution,
                         thumb=thumb,
                         fallbackThumb=fallbackThumb,
                         art=art,
@@ -543,21 +578,22 @@ def MainMenu():
 # Build the channel
 @route(PREFIX + '/channel', year=int, rating=float, container=bool, checkFiles=int)
 def channel(
-        channelType, title, streamURL, streamVideo, streamAudio, thumb, fallbackThumb, art, summary, tagline, source_title, year,
-        rating, content_rating, genres, artist, container=False, checkFiles=0, **kwargs):
+        channelType, title, streamURL, streamVideo, streamAudio, streamResolution, thumb, fallbackThumb, art, summary,
+         tagline, source_title, year, rating, content_rating, genres, artist, container=False, checkFiles=0, **kwargs):
 
     if debug:
         Log('Title: ' + str(title))
         Log('Type: ' + str(channelType))
         Log('Video: ' + str(streamVideo))
         Log('Audio: ' + str(streamAudio))
+        Log('Resolution: ' + str(streamResolution))
 
     rating_key = ''.join(filter(str.isdigit, streamURL)) + str(int(time.time()))
 
     videoChannelMetadata = dict(
         key=Callback(
-            channel, channelType=channelType, title=title, streamURL=streamURL, streamVideo=streamVideo, streamAudio=streamAudio, thumb=thumb,
-            fallbackThumb=fallbackThumb, art=art, summary=summary, tagline=tagline, source_title=source_title, year=year, rating=rating,
+            channel, channelType=channelType, title=title, streamURL=streamURL, streamVideo=streamVideo, streamAudio=streamAudio, streamResolution=streamResolution,
+            thumb=thumb, fallbackThumb=fallbackThumb, art=art, summary=summary, tagline=tagline, source_title=source_title, year=year, rating=rating,
             content_rating=content_rating, genres=genres, artist=artist, container=True, checkFiles=0, **kwargs),
         rating_key = rating_key,
         title = title,
@@ -573,8 +609,8 @@ def channel(
 
     audioChannelMetadata = dict(
         key=Callback(
-            channel, channelType=channelType, title=title, streamURL=streamURL, streamVideo=streamVideo, streamAudio=streamAudio, thumb=thumb,
-            fallbackThumb=fallbackThumb, art=art, summary=summary, tagline=tagline, source_title=source_title, year=year, rating=rating,
+            channel, channelType=channelType, title=title, streamURL=streamURL, streamVideo=streamVideo, streamAudio=streamAudio, streamResolution=streamResolution,
+            thumb=thumb, fallbackThumb=fallbackThumb, art=art, summary=summary, tagline=tagline, source_title=source_title, year=year, rating=rating,
             content_rating=content_rating, genres=genres, artist=artist, container=True, checkFiles=0, **kwargs),
         rating_key = streamURL,
         thumb = Callback(image, url=thumb, fallback=fallbackThumb),
@@ -584,19 +620,68 @@ def channel(
         rating = rating,
         genres = [genres])
 
-    if streamVideo and streamAudio:
-        videoChannelMediaData = dict(
-        items = [
-            MediaObject(
-                parts = [PartObject(key=Callback(stream, streamURL=streamURL))],
-                video_resolution = '1080',
-                container = 'mpegts',
-                bitrate = 10000,
-                width = 1920,
-                height = 1080,
-                video_codec = streamVideo,
-                audio_codec = streamAudio,
-                optimized_for_streaming = True)])
+    if Prefs['prefDirectStream'] and streamVideo and streamAudio:
+        # Add basic authentication info to the stream URL - Plex ignores the headers parameter in PartObject
+        tvhBasicAuth = '//%s:%s@' % (Prefs['tvhUser'], Prefs['tvhPass'])
+        tvhAuthAddress = tvhAddress.replace('//', tvhBasicAuth)
+        playbackURL = '%s%s' % (tvhAuthAddress, streamURL)
+    
+        if Prefs['tvhProfile']:
+            playbackURL = playbackURL + '?profile=' + Prefs['tvhProfile']
+
+        if streamResolution == '720p':
+            videoChannelMediaData = dict(
+            items = [
+                MediaObject(
+                    parts = [PartObject(key=playbackURL,
+                    streams = [
+                        VideoStreamObject(codec=streamVideo,bitrate=8000,width=1280,height=720),
+                        AudioStreamObject(codec=streamAudio,bitrate=256)
+                    ])],
+                    video_resolution = '720',
+                    container = 'mpegts',
+                    bitrate = 8256,
+                    width = 1280,
+                    height = 720,
+                    video_codec = streamVideo,
+                    audio_codec = streamAudio,
+                    optimized_for_streaming = True)])
+
+        elif streamResolution == '576p':
+            videoChannelMediaData = dict(
+            items = [
+                MediaObject(
+                    parts = [PartObject(key=playbackURL,
+                    streams = [
+                        VideoStreamObject(codec=streamVideo,bitrate=2000,width=720,height=576),
+                        AudioStreamObject(codec=streamAudio,bitrate=256)
+                    ])],
+                    video_resolution = '576',
+                    container = 'mpegts',
+                    bitrate = 2256,
+                    width = 720,
+                    height = 576,
+                    video_codec = streamVideo,
+                    audio_codec = streamAudio,
+                    optimized_for_streaming = True)])
+
+        else:
+            videoChannelMediaData = dict(
+            items = [
+                MediaObject(
+                    parts = [PartObject(key=playbackURL,
+                    streams = [
+                        VideoStreamObject(codec=streamVideo,bitrate=11000,width=1920,height=1080),
+                        AudioStreamObject(codec=streamAudio,bitrate=256)
+                    ])],
+                    video_resolution = '1080',
+                    container = 'mpegts',
+                    bitrate = 11256,
+                    width = 1920,
+                    height = 1080,
+                    video_codec = streamVideo,
+                    audio_codec = streamAudio,
+                    optimized_for_streaming = True)])
 
     else:
         videoChannelMediaData = dict(

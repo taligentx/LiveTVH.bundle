@@ -53,5 +53,11 @@
         "label":    "prefMetadata",
         "type":     "bool",
         "default":  "true"
+    },
+    {
+        "id":       "prefDirectStream",
+        "label":    "prefDirectStream",
+        "type":     "bool",
+        "default":  "false"
     }
 ]
