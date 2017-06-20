@@ -680,6 +680,37 @@ def channel(
                     audio_codec = streamAudio,
                     optimized_for_streaming = True)])
 
+    elif streamResolution:
+        if streamResolution == '1080p':
+            videoChannelMediaData = dict(
+                items = [
+                    MediaObject(
+                        parts = [PartObject(
+                            key=Callback(stream, streamURL=streamURL))],
+                        video_resolution = '1080',
+                        container = 'mpegts',
+                        optimized_for_streaming = True)])
+
+        elif streamResolution == '720p':
+            videoChannelMediaData = dict(
+                items = [
+                    MediaObject(
+                        parts = [PartObject(
+                            key=Callback(stream, streamURL=streamURL))],
+                        video_resolution = '720',
+                        container = 'mpegts',
+                        optimized_for_streaming = True)])
+
+        elif streamResolution == '576p':
+            videoChannelMediaData = dict(
+                items = [
+                    MediaObject(
+                        parts = [PartObject(
+                            key=Callback(stream, streamURL=streamURL))],
+                        video_resolution = '576',
+                        container = 'mpegts',
+                        optimized_for_streaming = True)])
+
     else:
         videoChannelMediaData = dict(
             items = [
