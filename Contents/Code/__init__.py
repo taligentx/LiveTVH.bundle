@@ -642,6 +642,7 @@ def channel(
                     bitrate = 8256,
                     width = 1280,
                     height = 720,
+                    duration = 86400000,
                     video_codec = streamVideo,
                     audio_codec = streamAudio,
                     optimized_for_streaming = True)])
@@ -659,6 +660,7 @@ def channel(
                     bitrate = 2256,
                     width = 720,
                     height = 576,
+                    duration = 86400000,
                     video_codec = streamVideo,
                     audio_codec = streamAudio,
                     optimized_for_streaming = True)])
@@ -676,6 +678,7 @@ def channel(
                     bitrate = 11256,
                     width = 1920,
                     height = 1080,
+                    duration = 86400000,
                     video_codec = streamVideo,
                     audio_codec = streamAudio,
                     optimized_for_streaming = True)])
@@ -689,6 +692,7 @@ def channel(
                             key=Callback(stream, streamURL=streamURL))],
                         video_resolution = '1080',
                         container = 'mpegts',
+                        duration = 86400000,
                         optimized_for_streaming = True)])
 
         elif streamResolution == '720p':
@@ -699,6 +703,7 @@ def channel(
                             key=Callback(stream, streamURL=streamURL))],
                         video_resolution = '720',
                         container = 'mpegts',
+                        duration = 86400000,
                         optimized_for_streaming = True)])
 
         elif streamResolution == '576p':
@@ -709,6 +714,7 @@ def channel(
                             key=Callback(stream, streamURL=streamURL))],
                         video_resolution = '576',
                         container = 'mpegts',
+                        duration = 86400000,
                         optimized_for_streaming = True)])
 
     else:
@@ -719,6 +725,7 @@ def channel(
                         key=Callback(stream, streamURL=streamURL))],
                     video_resolution = '1080',
                     container = 'mpegts',
+                    duration = 86400000,
                     optimized_for_streaming = True)])
 
     if channelType == 'TrackObject':
