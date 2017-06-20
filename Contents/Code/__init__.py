@@ -636,8 +636,7 @@ def channel(
                     parts = [PartObject(key=playbackURL,
                     streams = [
                         VideoStreamObject(codec=streamVideo,bitrate=8000,width=1280,height=720),
-                        AudioStreamObject(codec=streamAudio,bitrate=256)
-                    ])],
+                        AudioStreamObject(codec=streamAudio,bitrate=256)])],
                     video_resolution = '720',
                     container = 'mpegts',
                     bitrate = 8256,
@@ -654,8 +653,7 @@ def channel(
                     parts = [PartObject(key=playbackURL,
                     streams = [
                         VideoStreamObject(codec=streamVideo,bitrate=2000,width=720,height=576),
-                        AudioStreamObject(codec=streamAudio,bitrate=256)
-                    ])],
+                        AudioStreamObject(codec=streamAudio,bitrate=256)])],
                     video_resolution = '576',
                     container = 'mpegts',
                     bitrate = 2256,
@@ -672,8 +670,7 @@ def channel(
                     parts = [PartObject(key=playbackURL,
                     streams = [
                         VideoStreamObject(codec=streamVideo,bitrate=11000,width=1920,height=1080),
-                        AudioStreamObject(codec=streamAudio,bitrate=256)
-                    ])],
+                        AudioStreamObject(codec=streamAudio,bitrate=256)])],
                     video_resolution = '1080',
                     container = 'mpegts',
                     bitrate = 11256,
@@ -689,6 +686,8 @@ def channel(
                 MediaObject(
                     parts = [PartObject(
                         key=Callback(stream, streamURL=streamURL))],
+                    video_resolution = '1080',
+                    container = 'mpegts',
                     optimized_for_streaming = True)])
 
     if channelType == 'TrackObject':
