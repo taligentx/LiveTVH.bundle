@@ -99,7 +99,7 @@ def setPrefs():
 # Build the main menu
 @handler(PREFIX, TITLE)
 def MainMenu():
-    
+
     if debug:
         Log.Debug('Client: ' + str(Client.Product))
         Log.Debug('Platform: ' + str(Client.Platform))
@@ -625,7 +625,7 @@ def channel(
         tvhBasicAuth = '//{}:{}@'.format(Prefs['tvhUser'], Prefs['tvhPass'])
         tvhAuthAddress = tvhAddress.replace('//', tvhBasicAuth)
         playbackURL = '{}{}'.format(tvhAuthAddress, streamURL)
-    
+
         if Prefs['tvhProfile']:
             playbackURL = playbackURL + '?profile=' + Prefs['tvhProfile']
 
