@@ -6,6 +6,7 @@ LiveTVH provides live TV streaming for [Plex](https://plex.tv) via [Tvheadend](h
   This pushes the pre-existing changes in the develop branch to master as a release.
   * Updated: Tvheadend channel tags support additional codecs, resolutions, and radio (audio-only) channels
   * Updated: Changed image filenames to match Plex channel guidelines.
+
 * 2017.05.22 - [LiveTVH 1.2](https://github.com/taligentx/LiveTVH.bundle/releases/tag/v1.2)
   * New: Paginated channel lists with configurable # of items per page - this helps with longer channel lists (a necessity for IPTV providers with thousands of channels).
   * New: Tvheadend recordings for playback - located at the end of the first page of the channel list (a display bug with several Plex clients prevents placing it at the beginning of the list).
@@ -16,7 +17,7 @@ LiveTVH provides live TV streaming for [Plex](https://plex.tv) via [Tvheadend](h
   * Updated: Code housekeeping (partially PEP8-conformant)
   * Bugfix: transcoding quality options not visible during playback
   * Bugfix: episode names from EPG were not set on Plex for Android
-   
+
 * 2017.05.14 - [LiveTVH 1.1](https://github.com/taligentx/LiveTVH.bundle/releases/tag/v1.1)
   * EPG is no longer hard set - the number of EPG items requested is now based on the number of channels and hours of EPG data necessary (up to a maximum of 10,000 items or 10MB of data).
   * Bugfix: Thumbnails fallback to a channel logo when a show matches theTVDB but does not have a poster.
@@ -55,22 +56,22 @@ LiveTVH provides live TV streaming for [Plex](https://plex.tv) via [Tvheadend](h
   * Video tags: `H264`, `MPEG2`, `HEVC`, `VP8`, `VP9`
   * Audio tags: `AAC`, `AAC-LATM`, `AC3`, `EAC3`, `MP2`, `MP3`, `VORBIS`
   * Video and audio tags may be combined into single tags: `H264-AAC`, `H264-MP2`, etc.
-  * Video resolution tags: `HDTV`, `720p`, `SDTV` 
-  
+  * Video resolution tags: `HDTV`, `720p`, `SDTV`
+
   ![Tvheadend Channel Tags Screenshot](https://cloud.githubusercontent.com/assets/12835671/26338051/e0cb75dc-3f42-11e7-85a0-7af80e425a21.png)
 
 * Radio (audio-only) channels are also identified using Tvheadend channel tags - create and set a `Radio` tag in Tvheadend on the appropriate channels for audio-only playback, as well as audio tags (for example, `AAC`) for direct streaming.
 
 * Watching remotely may require Tvheadend to have a public-facing address, as some clients will attempt to directly play the Tvheadend stream instead of running through the Plex transcoder.
-  
+
   In this case, putting Tvheadend behind a [reverse proxy with SSL](https://www.nginx.com/resources/admin-guide/reverse-proxy/) is highly recommended, as the Tvheadend username and password is sent using HTTP Basic Authentication and is not secure over plain HTTP.
 
 * LiveTVH preferentially searches for metadata on theTVDB using a show's zap2it ID if provided through Tvheadend's EPG.
-  
+
   For example, [zap2xml](http://zap2xml.awardspace.info) produces an XMLTV file with a zap2it ID for each show (if available) - Tvheadend includes this information in its EPG, and LiveTVH will use this ID to match the correct show. If a zap2it ID is not available, LiveTVH will fallback to searching by name.
-  
+
   If searching theTVDB fails by zap2it ID but succeeds by name, LiveTVH will display the zap2it ID in the summary as an alert that the show's zap2it entry on theTVDB may be missing/incorrect - consider updating theTVDB.com with the correct information to improve search results.  For example, many shows are in the older `SHxxxxxx` format, while the current format is `EPxxxxxxxx`.
-  
+
   ![zap2it Screenshot](https://cloud.githubusercontent.com/assets/12835671/25927080/e3b33ec6-35b8-11e7-8eb2-d0f0a3cfabc1.jpg)
 
 ## Known Issues
