@@ -21,7 +21,7 @@ tvdbRetryInterval = CACHE_1MONTH
 
 # /Preferences
 
-liveTVHVersion = '1.3dev'
+liveTVHVersion = '1.3'
 TITLE = 'LiveTVH'
 PREFIX = '/video/livetvh'
 THUMB = 'icon-default.png'
@@ -57,10 +57,10 @@ def setPrefs():
     global tmdbGenreData
 
     # Set Tvheadend authorization and verify connectivity to Tvheadend
-    tvhAuth = base64.b64encode('%s:%s' % (Prefs['tvhUser'], Prefs['tvhPass']))
-    tvhHeaders = {'Authorization': 'Basic %s' % tvhAuth}
+    tvhAuth = base64.b64encode('{}:{}'.format(Prefs['tvhUser'], Prefs['tvhPass']))
+    tvhHeaders = {'Authorization': 'Basic ' + str(tvhAuth)}
     tvhAddress = Prefs['tvhAddress'].rstrip('/')
-    tvhServerInfoURL = '%s/api/serverinfo' % tvhAddress
+    tvhServerInfoURL = str(tvhAddress) + '/api/serverinfo'
 
     try:
         tvhInfoData = JSON.ObjectFromURL(url=tvhServerInfoURL, headers=tvhHeaders, values=None, cacheTime=1)
@@ -69,7 +69,7 @@ def setPrefs():
         if tvhInfoData['api_version'] >= 15:
             tvhReachable = True
         else:
-            Log.Critical('Tvheadend version ' + tvhInfoData['sw_version'] + ' is unsupported.')
+            Log.Critical('Tvheadend version ' + tvhInfoData['sw_version'] + ' is not supported.')
             return
 
     except Exception as e:
@@ -107,7 +107,7 @@ def MainMenu():
 
     # Request channel data from Tvheadend
     tvhChannelsData = None
-    tvhChannelsURL = '%s/api/channel/grid?start=0&limit=100000' % tvhAddress
+    tvhChannelsURL = str(tvhAddress) + '/api/channel/grid?start=0&limit=100000'
 
     if tvhReachable:
         try:
@@ -124,7 +124,7 @@ def MainMenu():
     # Request and set channel tags from Tvheadend
     # Tags are used as a manual method to identify video/audio attributes for each channel
     tvhTagsData = None
-    tvhTagsURL = '%s/api/channeltag/grid?start=0&limit=100000' % tvhAddress
+    tvhTagsURL = str(tvhAddress) + '/api/channeltag/grid?start=0&limit=100000'
 
     try:
         tvhTagsData = JSON.ObjectFromURL(url=tvhTagsURL, headers=tvhHeaders, values=None, cacheTime=channelDataCacheTime)
@@ -199,7 +199,7 @@ def MainMenu():
 
     # Request recordings from Tvheadend
     tvhRecordingsData = None
-    tvhRecordingsURL = '%s/api/dvr/entry/grid_finished' % tvhAddress
+    tvhRecordingsURL = str(tvhAddress) + '/api/dvr/entry/grid_finished'
 
     try:
         tvhRecordingsData = JSON.ObjectFromURL(url=tvhRecordingsURL, headers=tvhHeaders, values=None, cacheTime=channelDataCacheTime)
@@ -229,7 +229,7 @@ def MainMenu():
 
     while True:
         try:
-            tvhEPGURL = '%s/api/epg/events/grid?start=0&limit=%s' % (tvhAddress,epgLoopLimit)
+            tvhEPGURL = str(tvhAddress) + '/api/epg/events/grid?start=0&limit=' + str(epgLoopLimit)
 
             if epgUTF8Encoding:
                 epgEncoding = 'utf-8'
@@ -284,7 +284,7 @@ def MainMenu():
                         title = str(tvhChannel['number'])
 
                 uuid = tvhChannel['uuid']
-                streamURL = '/stream/channel/%s' % uuid
+                streamURL = '/stream/channel/' + str(uuid)
                 streamVideo = None
                 streamAudio = None
                 streamType = None
@@ -496,12 +496,12 @@ def MainMenu():
                 try:
                     if thumb is None:
                         if tvhChannel['icon_public_url'].startswith('imagecache'):
-                            thumb = '%s/%s' % (tvhAddress, tvhChannel['icon_public_url'])
+                            thumb = '{}/{}'.format(tvhAddress, tvhChannel['icon_public_url'])
                         elif tvhChannel['icon_public_url'].startswith('http'):
                             thumb = tvhChannel['icon_public_url']
 
                     if tvhChannel['icon_public_url'].startswith('imagecache'):
-                        fallbackThumb = '%s/%s' % (tvhAddress, tvhChannel['icon_public_url'])
+                        fallbackThumb ='{}/{}'.format(tvhAddress, tvhChannel['icon_public_url'])
                     elif tvhChannel['icon_public_url'].startswith('http'):
                         fallbackThumb = tvhChannel['icon_public_url']
 
@@ -622,9 +622,9 @@ def channel(
 
     if Prefs['prefDirectStream'] and streamVideo and streamAudio:
         # Add basic authentication info to the stream URL - Plex ignores the headers parameter in PartObject
-        tvhBasicAuth = '//%s:%s@' % (Prefs['tvhUser'], Prefs['tvhPass'])
+        tvhBasicAuth = '//{}:{}@'.format(Prefs['tvhUser'], Prefs['tvhPass'])
         tvhAuthAddress = tvhAddress.replace('//', tvhBasicAuth)
-        playbackURL = '%s%s' % (tvhAuthAddress, streamURL)
+        playbackURL = '{}{}'.format(tvhAuthAddress, streamURL)
     
         if Prefs['tvhProfile']:
             playbackURL = playbackURL + '?profile=' + Prefs['tvhProfile']
@@ -783,7 +783,7 @@ def stream(streamURL):
         playbackURL = playbackURL + '?profile=' + Prefs['tvhProfile']
 
     # Verify the channel is available before returning it to PartObject
-    testURL = '%s%s' % (tvhAddress, streamURL)
+    testURL = '{}{}'.format(tvhAddress, streamURL)
 
     try:
         responseCode = HTTP.Request(testURL, headers=tvhHeaders, values=None, cacheTime=None, timeout=2).headers
@@ -802,7 +802,7 @@ def recordings(tvhVideoTags, tvhAudioTags, startCount=0):
 
     # Request recordings from Tvheadend
     tvhRecordingsData = None
-    tvhRecordingsURL = '%s/api/dvr/entry/grid_finished' % tvhAddress
+    tvhRecordingsURL = str(tvhAddress) + '/api/dvr/entry/grid_finished'
 
     try:
         tvhRecordingsData = JSON.ObjectFromURL(url=tvhRecordingsURL, headers=tvhHeaders, values=None, cacheTime=channelDataCacheTime)
@@ -811,7 +811,7 @@ def recordings(tvhVideoTags, tvhAudioTags, startCount=0):
 
     # Request channel data from Tvheadend
     tvhChannelsData = None
-    tvhChannelsURL = '%s/api/channel/grid?start=0&limit=100000' % tvhAddress
+    tvhChannelsURL = str(tvhAddress) + '/api/channel/grid?start=0&limit=100000'
 
     try:
         tvhChannelsData = JSON.ObjectFromURL(url=tvhChannelsURL, headers=tvhHeaders, values=None, cacheTime=channelDataCacheTime)
@@ -933,10 +933,10 @@ def recordings(tvhVideoTags, tvhAudioTags, startCount=0):
         # Use channel icons from Tvheadend as a fallback
         try:
             if thumb is None and tvhRecording['channel_icon'].startswith('imagecache'):
-                thumb = '%s/%s' % (tvhAddress, tvhRecording['channel_icon'])
+                thumb = '{}/{}'.format(tvhAddress, tvhRecording['channel_icon'])
 
             if tvhRecording['channel_icon'].startswith('imagecache'):
-                fallbackThumb ='%s/%s' % (tvhAddress, tvhRecording['channel_icon'])
+                fallbackThumb ='{}/{}'.format(tvhAddress, tvhRecording['channel_icon'])
 
         except: pass
 
@@ -982,7 +982,7 @@ def image(url=None, fallback=None):
         return None
 
     if 'api.thetvdb.com' in url:
-        tvdbHeaders = {'Authorization' : 'Bearer %s' % tvdbToken}
+        tvdbHeaders = {'Authorization' : 'Bearer ' + str(tvdbToken)}
         tvdbImageData = None
 
         try:
@@ -1005,7 +1005,7 @@ def image(url=None, fallback=None):
 
         if tvdbImageData:
             for tvdbImageResult in tvdbImageData['data']:
-                url = 'http://thetvdb.com/banners/' + tvdbImageResult['fileName']
+                url = 'http://thetvdb.com/banners/' + str(tvdbImageResult['fileName'])
                 try:
                     imageContent = HTTP.Request(url, cacheTime=imageCacheTime, values=None).content
                     return DataObject(imageContent, 'image/jpeg')
@@ -1120,19 +1120,19 @@ def tvdb(title, zap2itID, zap2itMissingID=None):
             d, h = divmod(h, 24)
             if d != 0:
                 if d == 1:
-                    Log.Info('theTVDB previously had no results for ' + title + ', will try again after 1 day, %sh.' % h)
+                    Log.Info('theTVDB previously had no results for ' + title + ', will try again after 1d, {}h.'.format(h))
                 else:
-                    Log.Info('theTVDB previously had no results for ' + title + ', will try again after %s days.' % d)
+                    Log.Info('theTVDB previously had no results for ' + title + ', will try again after {} days.'.format(d))
             elif h != 0:
                 if h == 1:
-                    Log.Info('theTVDB previously had no results for ' + title + ', will try again after 1 hour, %sm.' % m)
+                    Log.Info('theTVDB previously had no results for ' + title + ', will try again after 1h, {}m.'.format(m))
                 else:
-                    Log.Info('theTVDB previously had no results for ' + title + ', will try again after %s hours.' % h)
+                    Log.Info('theTVDB previously had no results for ' + title + ', will try again after {} hours.'.format(h))
             else:
                 if m == 1:
-                    Log.Info('theTVDB previously had no results for ' + title + ', will try again after 1m, %ss.' % s)
+                    Log.Info('theTVDB previously had no results for ' + title + ', will try again after 1m, {}s.'.format(s))
                 else:
-                    Log.Info('theTVDB previously had no results for ' + title + ', will try again after %s minutes.' % m)
+                    Log.Info('theTVDB previously had no results for ' + title + ', will try again after {} minutes.'.format(m))
             return None
 
     # Request an authorization token if it doesn't exist
@@ -1149,9 +1149,9 @@ def tvdb(title, zap2itID, zap2itMissingID=None):
     tvdbHeaders = {'Authorization' : 'Bearer %s' % tvdbToken}
 
     if zap2itID:
-        tvdbSearchURL = 'https://api.thetvdb.com/search/series?zap2itId=%s' % String.Quote(zap2itID)
+        tvdbSearchURL = 'https://api.thetvdb.com/search/series?zap2itId={}'.format(String.Quote(zap2itID))
     else:
-        tvdbSearchURL = 'https://api.thetvdb.com/search/series?name=%s' % String.Quote(title)
+        tvdbSearchURL = 'https://api.thetvdb.com/search/series?name={}'.format(String.Quote(title))
 
     try:
         tvdbData = JSON.ObjectFromURL(url=tvdbSearchURL, headers=tvdbHeaders, values=None, cacheTime=imageCacheTime)
@@ -1165,7 +1165,7 @@ def tvdb(title, zap2itID, zap2itMissingID=None):
                 tvdbID = tvdbResult['id']
                 if zap2itMissingID:
                     Log.Info('Found ' + title + ' at http://thetvdb.com/?tab=series&id=' + str(tvdbID)
-                            + ' by name but not by zap2it ID ' + zap2itMissingID
+                            + ' by name but not by zap2it ID ' + str(zap2itMissingID)
                             + ' - if this match is correct, consider adding the zap2it ID to theTVDB.com to improve search results.')
                 break
 
@@ -1186,7 +1186,7 @@ def tvdb(title, zap2itID, zap2itMissingID=None):
                 Dict[title] = time.time() + tvdbRetryInterval
                 h, m = divmod(int(tvdbRetryInterval), 3600)
                 d, h = divmod(h, 24)
-                Log.Info('No results from theTVDB for ' + title + ', skipping lookup for %s days.' % d)
+                Log.Info('No results from theTVDB for ' + title + ', skipping lookup for {} days.'.format(d))
                 return None
 
         else:
@@ -1194,11 +1194,11 @@ def tvdb(title, zap2itID, zap2itMissingID=None):
             return None
 
     if tvdbID:
-        tvdbPosterSearchURL = 'https://api.thetvdb.com/series/%s/images/query?keyType=poster' % tvdbID
-        tvdbFanartSearchURL = 'https://api.thetvdb.com/series/%s/images/query?keyType=fanart' % tvdbID
+        tvdbPosterSearchURL = 'https://api.thetvdb.com/series/{}/images/query?keyType=poster'.format(tvdbID)
+        tvdbFanartSearchURL = 'https://api.thetvdb.com/series/{}/images/query?keyType=fanart'.format(tvdbID)
 
         # Search for metadata
-        tvdbMetadataSearchURL = 'https://api.thetvdb.com/series/%s' % tvdbID
+        tvdbMetadataSearchURL = 'https://api.thetvdb.com/series/' + str(tvdbID)
         tvdbMetadata = None
 
         try:
@@ -1222,9 +1222,9 @@ def tvdb(title, zap2itID, zap2itMissingID=None):
         h, m = divmod(int(tvdbRetryInterval), 3600)
         d, h = divmod(h, 24)
         if d == 1:
-            Log.Info('No results from theTVDB for ' + title + ', skipping lookup for 1 day, %sh.' % h)
+            Log.Info('No results from theTVDB for ' + title + ', skipping lookup for 1d, {}h.'.format(h))
         else:
-            Log.Info('No results from theTVDB for ' + title + ', skipping lookup for %s days.' % d)
+            Log.Info('No results from theTVDB for ' + title + ', skipping lookup for {} days.'.format(d))
 
         return None
 
@@ -1245,7 +1245,7 @@ def tmdb(title):
     tmdbBackdrop = None
     tmdbYear = None
     tmdbVoteAverage = 0.0
-    tmdbSearchURL = 'https://api.themoviedb.org/3/search/multi?api_key=0fd2136e80c47d0e371ee1af87eaedde&query=%s' % String.Quote(title)
+    tmdbSearchURL = 'https://api.themoviedb.org/3/search/multi?api_key=0fd2136e80c47d0e371ee1af87eaedde&query={}'.format(String.Quote(title))
     tmdbGenres = None
 
     # Search
