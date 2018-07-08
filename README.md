@@ -2,6 +2,10 @@
 LiveTVH provides live TV streaming for [Plex](https://plex.tv) via [Tvheadend](https://tvheadend.org), including metadata from Tvheadend's EPG, [theTVDB](https://thetvdb.com), and [The Movie DB](https://www.themoviedb.org).
 
 ## Release notes
+* 2018.07.08 - [LiveTVH 1.3](https://github.com/taligentx/LiveTVH.bundle/releases/tag/v1.3)
+  This pushes the pre-existing changes in the develop branch to master as a release.
+  * Updated: Tvheadend channel tags support additional codecs, resolutions, and radio (audio-only) channels
+  * Updated: Changed image filenames to match Plex channel guidelines.
 * 2017.05.22 - [LiveTVH 1.2](https://github.com/taligentx/LiveTVH.bundle/releases/tag/v1.2)
   * New: Paginated channel lists with configurable # of items per page - this helps with longer channel lists (a necessity for IPTV providers with thousands of channels).
   * New: Tvheadend recordings for playback - located at the end of the first page of the channel list (a display bug with several Plex clients prevents placing it at the beginning of the list).
@@ -47,7 +51,7 @@ LiveTVH provides live TV streaming for [Plex](https://plex.tv) via [Tvheadend](h
 
 * While Tvheadend recordings can be played, managing new recordings will need to be handled outside of Plex, or by using [Plex DVR](https://www.plex.tv/features/dvr) and [tvhProxy](https://github.com/jkaberg/tvhProxy)).
 
-* Direct streaming of H264 channels on Plex Web, iOS, and Roku requires identifying the channel's codecs and resolution using Tvheadend channel tags.  Create and set channel tags in Tvheadend as appropriate for each H264 channel (Tvheadend supports editing multiple selections to make this a quick update):
+* Direct streaming of channels on Plex Web, iOS, and Roku requires identifying the channel's codecs and resolution using Tvheadend channel tags.  Create and set channel tags in Tvheadend as appropriate for each channel (Tvheadend supports editing multiple selections to make this a quick update):
   * Video tags: `H264`, `MPEG2`, `HEVC`, `VP8`, `VP9`
   * Audio tags: `AAC`, `AAC-LATM`, `AC3`, `EAC3`, `MP2`, `MP3`, `VORBIS`
   * Video and audio tags may be combined into single tags: `H264-AAC`, `H264-MP2`, etc.
