@@ -483,7 +483,7 @@ def MainMenu():
 
                             # Check the EPG entry for a thumbnail
                             if tvhEPGEntry.get('image') and tvhEPGEntry['image'].startswith('http'):
-                                epgThumb = tvhEPGEntry['image']
+                                epgThumb = tvhEPGEntry['image'].replace('https://', 'http://')
 
                 # Use EPG thumbnails from Tvheadend if a thumbnail is not available from the metadata providers
                 if thumb is None and epgThumb:

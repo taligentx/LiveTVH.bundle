@@ -2,8 +2,11 @@
 LiveTVH provides live TV streaming for [Plex](https://plex.tv) via [Tvheadend](https://tvheadend.org), including metadata from Tvheadend's EPG, [theTVDB](https://thetvdb.com), and [The Movie DB](https://www.themoviedb.org).
 
 ## Release notes
+* 2018.07.09 - [LiveTVH 1.4-develop]
+  * Bugfix: Force plain HTTP connections for HTTPS EPG thumbnail URLs - required due to a [Plex issue](https://forums.plex.tv/t/https-broken/216635/8)
+
 * 2018.07.08 - [LiveTVH 1.3](https://github.com/taligentx/LiveTVH.bundle/releases/tag/v1.3)
-  This pushes the pre-existing changes in the develop branch to master as a release.
+  * This pushes the pre-existing changes in the develop branch to master as a release.
   * Updated: Tvheadend channel tags support additional codecs, resolutions, and radio (audio-only) channels
   * Updated: Changed image filenames to match Plex channel guidelines.
 
