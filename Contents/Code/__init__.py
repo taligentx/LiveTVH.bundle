@@ -21,7 +21,7 @@ tvdbRetryInterval = CACHE_1MONTH
 
 # /Preferences
 
-liveTVHVersion = '1.3'
+liveTVHVersion = '1.4'
 TITLE = 'LiveTVH'
 PREFIX = '/video/livetvh'
 THUMB = 'icon-default.png'
@@ -824,6 +824,7 @@ def recordings(tvhVideoTags, tvhAudioTags, startCount=0):
         streamURL = '/' + tvhRecording['url']
         streamVideo = None
         streamAudio = None
+        streamResolution = None
         thumb = None
         fallbackThumb = None
         art = R(ART)
@@ -948,6 +949,7 @@ def recordings(tvhVideoTags, tvhAudioTags, startCount=0):
                 streamURL=streamURL,
                 streamVideo=streamVideo,
                 streamAudio=streamAudio,
+                streamResolution=streamResolution,
                 thumb=thumb,
                 fallbackThumb=fallbackThumb,
                 art=art,

@@ -2,9 +2,10 @@
 LiveTVH provides live TV streaming for [Plex](https://plex.tv) via [Tvheadend](https://tvheadend.org), including metadata from Tvheadend's EPG, [theTVDB](https://thetvdb.com), and [The Movie DB](https://www.themoviedb.org).
 
 ## Release notes
-* 2018.07.09 - [LiveTVH 1.4-develop]
-  * Updated: Changed specified audio bitrate to enable audio direct streaming for Plex Web
+* LiveTVH 1.4-develop
+  * Updated: Plex Web no longer direct streams 256kbps audio, changed specified audio bitrate to re-enable audio direct streaming
   * Bugfix: Force plain HTTP connections for HTTPS EPG thumbnail URLs - required due to a [Plex issue](https://forums.plex.tv/t/https-broken/216635/8)
+  * Bugfix: Recordings failed to display when resolution was not set
 
 * 2018.07.08 - [LiveTVH 1.3](https://github.com/taligentx/LiveTVH.bundle/releases/tag/v1.3)
   * This pushes the pre-existing changes in the develop branch to master as a release.
