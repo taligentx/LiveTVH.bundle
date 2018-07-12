@@ -1,6 +1,12 @@
 # LiveTVH.bundle
 LiveTVH provides live TV streaming for [Plex](https://plex.tv) via [Tvheadend](https://tvheadend.org), including metadata from Tvheadend's EPG, [theTVDB](https://thetvdb.com), and [The Movie DB](https://www.themoviedb.org).
 
+## Features
+* Playback of Tvheadend video channels, audio channels, and recordings.
+* EPG displayed as a simple list within each channel description.
+* Metadata and artwork lookup from theTVDB (using EPG zap2it IDs if available) and The Movie DB.
+* Direct streaming (experimental, primarily tested with Plex Web and iOS).
+
 ## Release notes
 * LiveTVH 1.4-develop
   * Updated: Plex Web no longer direct streams 256kbps audio, changed specified audio bitrate to re-enable audio direct streaming
@@ -32,12 +38,6 @@ LiveTVH provides live TV streaming for [Plex](https://plex.tv) via [Tvheadend](h
 
 * 2017.05.10 - Initial release 1.0
 
-## Features
-* Playback of Tvheadend video channels, audio channels, and recordings.
-* EPG displayed as a simple list within each channel description.
-* Metadata and artwork lookup from theTVDB (using EPG zap2it IDs if available) and The Movie DB.
-* Direct streaming (experimental, primarily tested with Plex Web and iOS).
-
 ## Screenshots
 ![Plex Web Posters Screenshot](https://cloud.githubusercontent.com/assets/12835671/26337954/21753de4-3f42-11e7-895d-005c4da6b0a5.jpg)
 ![Plex Web Screenshot](https://cloud.githubusercontent.com/assets/12835671/25927053/c6212fda-35b8-11e7-98ca-ad636e62076e.jpg)
@@ -48,15 +48,17 @@ LiveTVH provides live TV streaming for [Plex](https://plex.tv) via [Tvheadend](h
 
 ## Setup
 1. [Download LiveTVH.bundle](https://github.com/taligentx/LiveTVH.bundle/releases/) and unzip to the [Plex Media Server/Plug-ins](https://support.plex.tv/hc/en-us/articles/201106098-How-do-I-find-the-Plug-Ins-folder-) directory.
-2. Set the LiveTVH preferences with the Tvheadend LAN IP address/hostname (or WAN for remote access), username, and password.
+2. From the Tvheadend web interface, navigate to Configuration > Users > Passwords and create a user and password.
+3. Navigate to Configuration > Users > Access Entries and create a new access entry.  Select "Web interface", Streaming > "Basic", and Video recorder > "Basic".
+
+    ![Tvheadend Access Entry screenshot](https://user-images.githubusercontent.com/12835671/42663549-95fdfd76-85fb-11e8-8b02-b2022d8c6cff.png)
+4. Set the LiveTVH preferences with the Tvheadend LAN IP address/hostname (or WAN for remote access), username, and password.
 
    ![Prefs Screenshot](https://cloud.githubusercontent.com/assets/12835671/26337942/0a4d9724-3f42-11e7-9654-7c8e82e4877a.jpg)
-3. Watch!
+5. Watch!
 
 ## Notes
-* Channels will take a bit of time to load initially while metadata is fetched and speed up over time as the cache is built up (up to 30 days).  20-30 channels per page works reasonably well.
-
-* While Tvheadend recordings can be played, managing new recordings will need to be handled outside of Plex, or by using [Plex DVR](https://www.plex.tv/features/dvr) and [tvhProxy](https://github.com/jkaberg/tvhProxy)).
+* Channels will take a bit of time to load initially while metadata is fetched and speed up over time as the cache is built up and stored for 30 days.  Up to 30 channels per page works reasonably well.
 
 * Direct streaming of channels on Plex Web, iOS, and Roku requires identifying the channel's codecs and resolution using Tvheadend channel tags.  Create and set channel tags in Tvheadend as appropriate for each channel (Tvheadend supports editing multiple selections to make this a quick update):
   * Video tags: `H264`, `MPEG2`, `HEVC`, `VP8`, `VP9`
@@ -67,6 +69,8 @@ LiveTVH provides live TV streaming for [Plex](https://plex.tv) via [Tvheadend](h
   ![Tvheadend Channel Tags Screenshot](https://cloud.githubusercontent.com/assets/12835671/26338051/e0cb75dc-3f42-11e7-85a0-7af80e425a21.png)
 
 * Radio (audio-only) channels are also identified using Tvheadend channel tags - create and set a `Radio` tag in Tvheadend on the appropriate channels for audio-only playback, as well as audio tags (for example, `AAC`) for direct streaming.
+
+* While Tvheadend recordings can be played, managing new recordings will need to be handled outside of Plex, or by using [Plex DVR](https://www.plex.tv/features/dvr) and [tvhProxy](https://github.com/jkaberg/tvhProxy)).
 
 * Watching remotely may require Tvheadend to have a public-facing address, as some clients will attempt to directly play the Tvheadend stream instead of running through the Plex transcoder.
 
