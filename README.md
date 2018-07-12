@@ -49,13 +49,14 @@ LiveTVH provides live TV streaming for [Plex](https://plex.tv) via [Tvheadend](h
 ## Setup
 1. [Download LiveTVH.bundle](https://github.com/taligentx/LiveTVH.bundle/releases/) and unzip to the [Plex Media Server/Plug-ins](https://support.plex.tv/hc/en-us/articles/201106098-How-do-I-find-the-Plug-Ins-folder-) directory.
 2. From the Tvheadend web interface, navigate to Configuration > Users > Passwords and create a user and password.
-3. Navigate to Configuration > Users > Access Entries and create a new access entry.  Select "Web interface", Streaming > "Basic", and Video recorder > "Basic".
+3. Navigate to Configuration > Users > Access Entries and create a new access entry.
+4. Select "Web interface", Streaming > "Basic", and Video recorder > "Basic".
 
     ![Tvheadend Access Entry screenshot](https://user-images.githubusercontent.com/12835671/42663549-95fdfd76-85fb-11e8-8b02-b2022d8c6cff.png)
-4. Set the LiveTVH preferences with the Tvheadend LAN IP address/hostname (or WAN for remote access), username, and password.
+5. Set the LiveTVH preferences with the Tvheadend LAN IP address/hostname (or WAN for remote access), username, and password.
 
    ![Prefs Screenshot](https://cloud.githubusercontent.com/assets/12835671/26337942/0a4d9724-3f42-11e7-9654-7c8e82e4877a.jpg)
-5. Watch!
+6. Watch!
 
 ## Notes
 * Channels will take a bit of time to load initially while metadata is fetched and speed up over time as the cache is built up and stored for 30 days.  Up to 30 channels per page works reasonably well.
