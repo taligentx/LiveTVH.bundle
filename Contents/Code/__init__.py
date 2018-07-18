@@ -18,6 +18,7 @@ channelDataCacheTime = 60
 epgCacheTime = 4200
 imageCacheTime = CACHE_1MONTH
 tvdbRetryInterval = CACHE_1MONTH
+httpTimeout = 3
 
 # /Preferences
 
@@ -236,7 +237,7 @@ def MainMenu():
             else:
                 epgEncoding = 'latin-1'
 
-            rawEPGData = HTTP.Request(url=tvhEPGURL, headers=tvhHeaders, cacheTime=epgCacheTime, encoding=epgEncoding, values=None).content
+            rawEPGData = HTTP.Request(url=tvhEPGURL, headers=tvhHeaders, timeout=httpTimeout, cacheTime=epgCacheTime, encoding=epgEncoding, values=None).content
             rawEPGData = re.sub(r'[\x00-\x1f]', '', rawEPGData) # Strip control characters from EPG data (yep, this has actually happened)
             tvhEPGData = JSON.ObjectFromString(rawEPGData, encoding='utf-8', max_size=20971520)
             if tvhEPGData: break
@@ -786,7 +787,7 @@ def stream(streamURL):
     testURL = '{}{}'.format(tvhAddress, streamURL)
 
     try:
-        responseCode = HTTP.Request(testURL, headers=tvhHeaders, values=None, cacheTime=None, timeout=2).headers
+        responseCode = HTTP.Request(testURL, headers=tvhHeaders, values=None, cacheTime=None, timeout=httpTimeout).headers
         return IndirectResponse(MovieObject, key=playbackURL)
 
     except Exception as e:
@@ -997,9 +998,9 @@ def image(url=None, fallback=None):
 
                 elif fallback:
                     if tvhAddress in fallback:
-                        imageContent = HTTP.Request(url=fallback, headers=tvhHeaders, cacheTime=imageCacheTime, values=None).content
+                        imageContent = HTTP.Request(url=fallback, headers=tvhHeaders, timeout=httpTimeout, cacheTime=imageCacheTime, values=None).content
                     else:
-                        imageContent = HTTP.Request(url=fallback, cacheTime=imageCacheTime, values=None).content
+                        imageContent = HTTP.Request(url=fallback, timeout=httpTimeout, cacheTime=imageCacheTime, values=None).content
 
                     return DataObject(imageContent, 'image/jpeg')
 
@@ -1009,7 +1010,7 @@ def image(url=None, fallback=None):
             for tvdbImageResult in tvdbImageData['data']:
                 url = 'http://thetvdb.com/banners/' + str(tvdbImageResult['fileName'])
                 try:
-                    imageContent = HTTP.Request(url, cacheTime=imageCacheTime, values=None).content
+                    imageContent = HTTP.Request(url, timeout=httpTimeout, cacheTime=imageCacheTime, values=None).content
                     return DataObject(imageContent, 'image/jpeg')
                 except Exception as e:
                     Log.Warn('Error retrieving image: ' + str(e))
@@ -1017,7 +1018,7 @@ def image(url=None, fallback=None):
 
     elif tvhAddress in url:
         try:
-            imageContent = HTTP.Request(url=url, headers=tvhHeaders, cacheTime=imageCacheTime, values=None).content
+            imageContent = HTTP.Request(url=url, headers=tvhHeaders, timeout=httpTimeout, cacheTime=imageCacheTime, values=None).content
             return DataObject(imageContent, 'image/jpeg')
         except Exception as e:
             Log.Warn('Error retrieving image: ' + str(e))
@@ -1028,7 +1029,7 @@ def image(url=None, fallback=None):
 
     else:
         try:
-            imageContent = HTTP.Request(url, cacheTime=imageCacheTime, values=None).content
+            imageContent = HTTP.Request(url, timeout=httpTimeout, cacheTime=imageCacheTime, values=None).content
             return DataObject(imageContent, 'image/jpeg')
         except Exception as e:
             Log.Warn('Error retrieving image: ' + str(e))
@@ -1093,11 +1094,11 @@ def tvdbAuth():
     tvdbHeaders = {'content-type': 'application/json'}
 
     try:
-        tvdbResponse = HTTP.Request(url=tvdbLoginURL, headers=tvdbHeaders, data=tvdbApiKeyJSON, cacheTime=1).content
+        tvdbResponse = HTTP.Request(url=tvdbLoginURL, headers=tvdbHeaders, timeout=httpTimeout, data=tvdbApiKeyJSON, cacheTime=1).content
         tvdbTokenData = JSON.ObjectFromString(tvdbResponse)
         tvdbToken = tvdbTokenData['token']
 
-    except Ex.HTTPError as e:
+    except Exception as e:
         Log.Warn('Failed to retrieve theTVDB authorization token: ' + str(e))
         tvdbToken = False
 
@@ -1145,7 +1146,13 @@ def tvdb(title, zap2itID, zap2itMissingID=None):
 
     elif not tvdbToken:
         Log.Info('theTVDB authorization failed.')
-        return {'poster': tvdbPosterSearchURL, 'fanart': tvdbFanartSearchURL}
+        return {
+          'poster': tvdbPosterSearchURL,
+          'fanart': tvdbFanartSearchURL,
+          'rating': tvdbRating,
+          'siteRating': tvdbSiteRating,
+          'genres': tvdbGenres,
+          'zap2itMissingID': zap2itMissingID}
 
     # Search using zap2it ID if available, otherwise search by name
     tvdbHeaders = {'Authorization' : 'Bearer %s' % tvdbToken}

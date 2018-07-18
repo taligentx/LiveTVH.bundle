@@ -12,6 +12,7 @@ LiveTVH provides live TV streaming for [Plex](https://plex.tv) via [Tvheadend](h
   * Updated: Plex Web no longer direct streams 256kbps audio, changed specified audio bitrate to re-enable audio direct streaming
   * Bugfix: Force plain HTTP connections for HTTPS EPG thumbnail URLs - required due to a [Plex issue](https://forums.plex.tv/t/https-broken/216635/8)
   * Bugfix: Recordings failed to display when resolution was not set
+  * Bugfix: Plugin failed to respond if theTVDB metadata is enabled and thetvdb.com is unreachable
 
 * 2018.07.08 - [LiveTVH 1.3](https://github.com/taligentx/LiveTVH.bundle/releases/tag/v1.3)
   * This pushes the pre-existing changes in the develop branch to master as a release.
@@ -47,9 +48,9 @@ LiveTVH provides live TV streaming for [Plex](https://plex.tv) via [Tvheadend](h
 ![Plex iOS Screenshot](https://cloud.githubusercontent.com/assets/12835671/25927072/dbecdd3c-35b8-11e7-80d9-056e59088501.jpg)
 
 ## Setup
-1. [Download LiveTVH.bundle](https://github.com/taligentx/LiveTVH.bundle/releases/) and unzip to the [Plex Media Server/Plug-ins](https://support.plex.tv/hc/en-us/articles/201106098-How-do-I-find-the-Plug-Ins-folder-) directory.
-2. From the Tvheadend web interface, navigate to Configuration > Users > Passwords and create a user and password.
-3. Navigate to Configuration > Users > Access Entries and create a new access entry.
+1. [Download LiveTVH.bundle](https://github.com/taligentx/LiveTVH.bundle/releases/) and unzip to the [Plex Media Server/Plug-ins](https://support.plex.tv/hc/en-us/articles/201106098-How-do-I-find-the-Plug-Ins-folder-) directory.  Alternatively, `git clone` this respository to the Plug-ins directory to keep track of the latest changes.
+2. Open the Tvheadend web interface and navigate to Configuration > Users > Passwords.  Create a user and password.
+3. Navigate to Configuration > Users > Access Entries and create a new access entry for the user.
 4. Select "Web interface", Streaming > "Basic", and Video recorder > "Basic".
 
     ![Tvheadend Access Entry screenshot](https://user-images.githubusercontent.com/12835671/42663549-95fdfd76-85fb-11e8-8b02-b2022d8c6cff.png)
@@ -61,7 +62,7 @@ LiveTVH provides live TV streaming for [Plex](https://plex.tv) via [Tvheadend](h
 ## Notes
 * Channels will take a bit of time to load initially while metadata is fetched and speed up over time as the cache is built up and stored for 30 days.  Up to 30 channels per page works reasonably well.
 
-* Direct streaming of channels on Plex Web, iOS, and Roku requires identifying the channel's codecs and resolution using Tvheadend channel tags.  Create and set channel tags in Tvheadend as appropriate for each channel (Tvheadend supports editing multiple selections to make this a quick update):
+* Direct streaming of channels on Plex Web, iOS, and Roku requires identifying the channel's codecs and resolution using Tvheadend channel tags.  Create and set channel tags in Tvheadend as appropriate for each channel (note that Tvheadend supports editing multiple selections at the same time):
   * Video tags: `H264`, `MPEG2`, `HEVC`, `VP8`, `VP9`
   * Audio tags: `AAC`, `AAC-LATM`, `AC3`, `EAC3`, `MP2`, `MP3`, `VORBIS`
   * Video and audio tags may be combined into single tags: `H264-AAC`, `H264-MP2`, etc.
