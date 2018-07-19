@@ -810,6 +810,12 @@ def recordings(tvhVideoTags, tvhAudioTags, startCount=0):
     except Exception as e:
         Log.Warn('Error retrieving Tvheadend recordings data: ' + str(e))
 
+    # Display an error message to clients if there was an error retrieving recordings data
+    if tvhRecordingsData is None:
+        errorContainer = ObjectContainer(title1=TITLE, no_cache=True)
+        errorContainer.add(DirectoryObject(title=L('recordingsUnavailable')))
+        return errorContainer
+
     # Request channel data from Tvheadend
     tvhChannelsData = None
     tvhChannelsURL = str(tvhAddress) + '/api/channel/grid?start=0&limit=100000'

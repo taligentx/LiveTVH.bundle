@@ -14,6 +14,7 @@ LiveTVH provides live TV streaming for [Plex](https://plex.tv) via [Tvheadend](h
   * Bugfix: Force plain HTTP connections for HTTPS EPG thumbnail URLs - required due to a [Plex issue](https://forums.plex.tv/t/https-broken/216635/8)
   * Bugfix: Recordings failed to display when resolution was not set
   * Bugfix: Plugin failed to respond if theTVDB metadata is enabled and thetvdb.com is unreachable
+  * Bugfix: Plugin failed to respond when accessing recordings if Tvheadend recordings data is invalid
 
 * 2018.07.08 - [LiveTVH 1.3](https://github.com/taligentx/LiveTVH.bundle/releases/tag/v1.3)
   * This pushes the pre-existing changes in the develop branch to master as a release.

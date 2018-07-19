@@ -1,6 +1,7 @@
 {
     "preferences":              "Preferences",
     "channelsUnavailable":      "No channels available, verify settings.",
+    "recordingsUnavailable":    "No recordings available, check logs for errors.",
     "tvhAddress":               "Tvheadend address:port (with webroot if applicable):",
     "tvhUser":                  "Username:",
     "tvhPass":                  "Password:",
