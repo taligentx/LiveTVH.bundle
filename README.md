@@ -15,6 +15,7 @@ LiveTVH provides live TV streaming for [Plex](https://plex.tv) via [Tvheadend](h
   * Bugfix: Recordings failed to display when resolution was not set
   * Bugfix: Plugin failed to respond if theTVDB metadata is enabled and thetvdb.com is unreachable
   * Bugfix: Plugin failed to respond when accessing recordings if Tvheadend recordings data is invalid
+  * Bugfix: Recordings failed to display with invalid UTF-8 characters, added fallback to display as ISO-8859-1 characters
 
 * 2018.07.08 - [LiveTVH 1.3](https://github.com/taligentx/LiveTVH.bundle/releases/tag/v1.3)
   * This pushes the pre-existing changes in the develop branch to master as a release.

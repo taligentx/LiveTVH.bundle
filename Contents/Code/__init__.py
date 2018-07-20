@@ -198,17 +198,33 @@ def MainMenu():
     except Exception as e:
         Log.Warn('Error parsing Tvheadend channel tags data: ' + str(e))
 
-    # Request recordings from Tvheadend
+    # Request recordings data as UTF-8 with fallback to ISO-8859-1
     tvhRecordingsData = None
     tvhRecordingsURL = str(tvhAddress) + '/api/dvr/entry/grid_finished'
+    recordingsUTF8Encoding = True
 
-    try:
-        tvhRecordingsData = JSON.ObjectFromURL(url=tvhRecordingsURL, headers=tvhHeaders, values=None, cacheTime=channelDataCacheTime)
-        if int(tvhRecordingsData['total']) == 0:
-            tvhRecordingsData = None
+    while True:
+        try:
+            if recordingsUTF8Encoding:
+                recordingsEncoding = 'utf-8'
+            else:
+                recordingsEncoding = 'latin-1'
 
-    except Exception as e:
-        Log.Warn('Error retrieving Tvheadend recordings data: ' + str(e))
+            rawRecordingsData = HTTP.Request(url=tvhRecordingsURL, headers=tvhHeaders, timeout=httpTimeout, cacheTime=channelDataCacheTime, encoding=recordingsEncoding, values=None).content
+            rawRecordingsData = re.sub(r'[\x00-\x1f]', '', rawRecordingsData) # Strip control characters from recordings data (yep, this has actually happened)
+            tvhRecordingsData = JSON.ObjectFromString(rawRecordingsData, encoding='utf-8', max_size=20971520)
+            if tvhRecordingsData: break
+
+        except Exception as e:
+            if recordingsUTF8Encoding:
+                Log.Warn('Unable to retrieve Tvheadend recordings data as UTF-8, falling back to ISO-8859-1: ' + str(e))
+                recordingsUTF8Encoding = False
+            else:
+                Log.Warn('Error retrieving Tvheadend recordings data: ' + str(e))
+                break
+
+    if int(tvhRecordingsData['total']) == 0:
+        tvhRecordingsData = None
 
     # Set the number of EPG items to retrieve
     tvhEPGData = None
@@ -801,14 +817,30 @@ def recordings(tvhVideoTags, tvhAudioTags, startCount=0):
     nextStartCount = startCount + int(Prefs['prefPageCount'])
     recordingsContainer = ObjectContainer(title1=L('recordings'), no_cache=True)
 
-    # Request recordings from Tvheadend
+    # Request recordings data as UTF-8 with fallback to ISO-8859-1
     tvhRecordingsData = None
     tvhRecordingsURL = str(tvhAddress) + '/api/dvr/entry/grid_finished'
+    recordingsUTF8Encoding = True
 
-    try:
-        tvhRecordingsData = JSON.ObjectFromURL(url=tvhRecordingsURL, headers=tvhHeaders, values=None, cacheTime=channelDataCacheTime)
-    except Exception as e:
-        Log.Warn('Error retrieving Tvheadend recordings data: ' + str(e))
+    while True:
+        try:
+            if recordingsUTF8Encoding:
+                recordingsEncoding = 'utf-8'
+            else:
+                recordingsEncoding = 'latin-1'
+
+            rawRecordingsData = HTTP.Request(url=tvhRecordingsURL, headers=tvhHeaders, timeout=httpTimeout, cacheTime=channelDataCacheTime, encoding=recordingsEncoding, values=None).content
+            rawRecordingsData = re.sub(r'[\x00-\x1f]', '', rawRecordingsData) # Strip control characters from recordings data (yep, this has actually happened)
+            tvhRecordingsData = JSON.ObjectFromString(rawRecordingsData, encoding='utf-8', max_size=20971520)
+            if tvhRecordingsData: break
+
+        except Exception as e:
+            if recordingsUTF8Encoding:
+                Log.Warn('Unable to retrieve Tvheadend recordings data as UTF-8, falling back to ISO-8859-1: ' + str(e))
+                recordingsUTF8Encoding = False
+            else:
+                Log.Warn('Error retrieving Tvheadend recordings data: ' + str(e))
+                break
 
     # Display an error message to clients if there was an error retrieving recordings data
     if tvhRecordingsData is None:
