@@ -54,23 +54,28 @@ def setPrefs():
     global tmdbBaseURL
     global tmdbGenreData
     tvhRealm = None
+    tvhAuthType = None
+    tvhAuthHandler = urllib2.HTTPBasicAuthHandler()
     tvhAddress = Prefs['tvhAddress'].rstrip('/')
     tvhServerInfoURL = str(tvhAddress) + '/api/serverinfo'
 
-    # Gets the Tvheadend HTTP authentication realm
+    # Gets the Tvheadend HTTP authentication type and realm
     try:
         response = urllib2.urlopen(tvhServerInfoURL).info()
     except urllib2.HTTPError as e:
-        tvhRealmData = re.search("realm=\"\w+", e.info().getheader('WWW-Authenticate')).group(0).split('"')
+        tvhAuthInfo = e.info().getheader('WWW-Authenticate')
+        if 'Digest' in tvhAuthInfo:
+            tvhAuthHandler = urllib2.HTTPDigestAuthHandler()
+
+        tvhRealmData = re.search("realm=\"\w+", tvhAuthInfo).group(0).split('"')
         tvhRealm = tvhRealmData[1]
     except Exception as e:
         Log.Info('Error accessing Tvheadend: ' + str(e))
 
-    # Sets the Tvheadend HTTP authentication type as Digest
-    tvhAuth = urllib2.HTTPDigestAuthHandler()
-    tvhAuth.add_password(tvhRealm, tvhAddress, Prefs['tvhUser'], Prefs['tvhPass'])
-    tvhOpen = urllib2.build_opener(tvhAuth)
-    urllib2.install_opener(tvhOpen)
+    # Sets the Tvheadend HTTP authentication data
+    tvhAuthHandler.add_password(tvhRealm, tvhAddress, Prefs['tvhUser'], Prefs['tvhPass'])
+    tvhOpener = urllib2.build_opener(tvhAuthHandler)
+    urllib2.install_opener(tvhOpener)
 
     # Checks for connectivity to Tvheadend
     try:
