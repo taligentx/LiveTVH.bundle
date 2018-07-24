@@ -58,6 +58,6 @@
         "id":       "prefDirectStream",
         "label":    "prefDirectStream",
         "type":     "bool",
-        "default":  "false"
+        "default":  "true"
     }
 ]

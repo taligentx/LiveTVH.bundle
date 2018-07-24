@@ -2,14 +2,15 @@
 LiveTVH provides live TV streaming for [Plex](https://plex.tv) via [Tvheadend](https://tvheadend.org), including metadata from Tvheadend's EPG, [theTVDB](https://thetvdb.com), and [The Movie DB](https://www.themoviedb.org).
 
 ## Features
-* Plays all Tvheadend video channels, audio channels, and recordings.  Direct streaming is possible by setting the codec and resolution of channels using Tvheadend channel tags.
-* Displays the Tvheadend EPG for channels through the Plex channel description.
+* Plays all Tvheadend video channels, audio channels, and recordings, including IPTV and ATSC/DVB sources.
+* Direct streaming when the codec and resolution of channels are set using Tvheadend channel tags.
+* Provides the Tvheadend EPG for channels in the Plex channel description.
 * Displays metadata and artwork from theTVDB (using EPG zap2it IDs if available) and The Movie DB.
 * Supports Tvheadend stable versions 4.2.x and unstable development versions 4.3.x.
 
 ## Release notes
 * LiveTVH 1.4-develop
-  * New: Support for Tvheadend HTTP authentication type Digest
+  * New: Support both plain and digest authentication for Tvheadend HTTP authentication
   * Updated: Plex Web no longer direct streams 256kbps audio, changed specified audio bitrate to re-enable audio direct streaming
   * Updated: Force plain HTTP connections for HTTPS EPG thumbnail URLs - required due to a [Plex issue](https://forums.plex.tv/t/https-broken/216635/8)
   * Bugfix: Recordings failed to display when resolution was not set
@@ -63,10 +64,10 @@ LiveTVH provides live TV streaming for [Plex](https://plex.tv) via [Tvheadend](h
 ## Notes
 * Channels will take a bit of time to load initially while metadata is fetched and speed up over time as the cache is built up and stored for 30 days.  Up to 30 channels per page works reasonably well.
 
-* Direct streaming of channels on Plex Web, iOS, and Roku requires identifying the channel's codecs and resolution using Tvheadend channel tags.  Create and set channel tags in Tvheadend as appropriate for each channel:
+* Direct streaming of channels on Plex Web, iOS, Roku, and Android requires identifying the channel's codecs and resolution using Tvheadend channel tags.  Create and set channel tags in Tvheadend as appropriate for each channel:
   * Video tags: `H264`, `MPEG2`, `HEVC`, `VP8`, `VP9`
   * Audio tags: `AAC`, `AAC-LATM`, `AC3`, `EAC3`, `MP2`, `MP3`, `VORBIS`
-  * Video and audio tags may be combined into single tags: `H264-AAC`, `H264-MP2`, etc.
+  * Video and audio tags may be combined into single tags: `MPEG2-AC3`, `H264-AAC`, etc.
   * Video resolution tags: `HDTV`, `720p`, `SDTV`
 
   ![Tvheadend Channel Tags Screenshot](https://cloud.githubusercontent.com/assets/12835671/26338051/e0cb75dc-3f42-11e7-85a0-7af80e425a21.png)

@@ -45,7 +45,7 @@ def ValidatePrefs():
     return True
 
 
-# Setup authorization and configuration data
+## Setup authorization and configuration data
 @route(PREFIX + '/setprefs')
 def setPrefs():
     global tvhAddress
@@ -55,7 +55,7 @@ def setPrefs():
     global tmdbGenreData
     tvhRealm = None
     tvhAuthType = None
-    tvhAuthHandler = urllib2.HTTPBasicAuthHandler()
+    tvhAuthHandler = urllib2.HTTPDigestAuthHandler()
     tvhAddress = Prefs['tvhAddress'].rstrip('/')
     tvhServerInfoURL = str(tvhAddress) + '/api/serverinfo'
 
@@ -64,18 +64,17 @@ def setPrefs():
         response = urllib2.urlopen(tvhServerInfoURL).info()
     except urllib2.HTTPError as e:
         tvhAuthInfo = e.info().getheader('WWW-Authenticate')
-        if 'Digest' in tvhAuthInfo:
-            tvhAuthHandler = urllib2.HTTPDigestAuthHandler()
 
-        tvhRealmData = re.search("realm=\"\w+", tvhAuthInfo).group(0).split('"')
-        tvhRealm = tvhRealmData[1]
+        if 'Basic' in str(tvhAuthInfo):
+            tvhAuthHandler = urllib2.HTTPBasicAuthHandler()
+
+        tvhRealm = (re.search("realm=\"[^\"]*", tvhAuthInfo).group(0).split('"'))[1]
+        tvhAuthHandler.add_password(tvhRealm, tvhAddress, Prefs['tvhUser'], Prefs['tvhPass'])
+        tvhOpener = urllib2.build_opener(tvhAuthHandler)
+        urllib2.install_opener(tvhOpener)
+
     except Exception as e:
         Log.Info('Error accessing Tvheadend: ' + str(e))
-
-    # Sets the Tvheadend HTTP authentication data
-    tvhAuthHandler.add_password(tvhRealm, tvhAddress, Prefs['tvhUser'], Prefs['tvhPass'])
-    tvhOpener = urllib2.build_opener(tvhAuthHandler)
-    urllib2.install_opener(tvhOpener)
 
     # Checks for connectivity to Tvheadend
     try:
@@ -91,7 +90,6 @@ def setPrefs():
     except Exception as e:
         Log.Critical('Error accessing Tvheadend: ' + str(e))
         tvhReachable = False
-        return
 
     # Renews theTVDB authorization token if necessary
     if Prefs['prefMetadata'] and tvdbToken:
