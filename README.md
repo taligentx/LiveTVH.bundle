@@ -5,12 +5,12 @@ LiveTVH provides live TV streaming for [Plex](https://plex.tv) via [Tvheadend](h
 * Plays all Tvheadend video channels, audio channels, and recordings.  Direct streaming is possible by setting the codec and resolution of channels using Tvheadend channel tags.
 * Displays the Tvheadend EPG for channels through the Plex channel description.
 * Displays metadata and artwork from theTVDB (using EPG zap2it IDs if available) and The Movie DB.
-* Supports Tvheadend stable versions (currently 4.2).  The Tvheadend unstable branch is not currently supported [due to a bug](https://github.com/taligentx/LiveTVH.bundle/issues/23).
+* Supports Tvheadend stable versions 4.2.x and unstable development versions 4.3.x.
 
 ## Release notes
 * LiveTVH 1.4-develop
   * Updated: Plex Web no longer direct streams 256kbps audio, changed specified audio bitrate to re-enable audio direct streaming
-  * Updated: Added note on supported versions of Tvheadend
+  * Updated: Tvheadend HTTP authentication type changed from Plain to Digest to support unstable Tvheadend 4.3's default authentication settings
   * Bugfix: Force plain HTTP connections for HTTPS EPG thumbnail URLs - required due to a [Plex issue](https://forums.plex.tv/t/https-broken/216635/8)
   * Bugfix: Recordings failed to display when resolution was not set
   * Bugfix: Plugin failed to respond if theTVDB metadata is enabled and thetvdb.com is unreachable
