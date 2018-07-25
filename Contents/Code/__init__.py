@@ -4,6 +4,7 @@
 import time
 import re
 import urllib2
+import ssl
 
 # Preferences
 #
@@ -31,6 +32,9 @@ tvhReachable = False
 tvdbToken = None
 tmdbBaseURL = None
 tmdbGenreData = None
+unverifiedSSL = ssl.create_default_context()
+unverifiedSSL.check_hostname = False
+unverifiedSSL.verify_mode = ssl.CERT_NONE
 
 debug = True
 
@@ -45,7 +49,7 @@ def ValidatePrefs():
     return True
 
 
-## Setup authorization and configuration data
+# Setup authorization and configuration data
 @route(PREFIX + '/setprefs')
 def setPrefs():
     global tvhAddress
@@ -513,7 +517,7 @@ def MainMenu():
 
                             # Check the EPG entry for a thumbnail
                             if tvhEPGEntry.get('image') and tvhEPGEntry['image'].startswith('http'):
-                                epgThumb = tvhEPGEntry['image'].replace('https://', 'http://')
+                                epgThumb = tvhEPGEntry['image']
 
                 # Use EPG thumbnails from Tvheadend if a thumbnail is not available from the metadata providers
                 if thumb is None and epgThumb:
@@ -1044,6 +1048,7 @@ def image(url=None, fallback=None):
 
         except Ex.HTTPError as e:
             if e.code == 404:
+                Log.Info('Missing artwork in theTVDB, fallback: ' + str(fallback))
                 if fallback == R(ART):
                     return Redirect(R(ART))
 
@@ -1051,7 +1056,16 @@ def image(url=None, fallback=None):
                     if tvhAddress in fallback:
                         imageContent = urllib2.urlopen(fallback).read()
                     else:
-                        imageContent = HTTP.Request(url=fallback, timeout=httpTimeout, cacheTime=imageCacheTime, values=None).content
+                        try:
+                            imageContent = HTTP.Request(url=fallback, timeout=httpTimeout, cacheTime=imageCacheTime, values=None).content
+                        except Exception as e:
+                            try:
+                                if 'https' in fallback:
+                                    imageContent = urllib2.urlopen(fallback, context=unverifiedSSL).read()
+                                    Log.Info('Falling back to unverified SSL: ' + fallback)
+
+                            except Exception as e:
+                                Log.Warn('Error retrieving fallback image: ' + str(e))
 
                     return DataObject(imageContent, 'image/jpeg')
 
@@ -1083,8 +1097,14 @@ def image(url=None, fallback=None):
             imageContent = HTTP.Request(url, timeout=httpTimeout, cacheTime=imageCacheTime, values=None).content
             return DataObject(imageContent, 'image/jpeg')
         except Exception as e:
-            Log.Warn('Error retrieving image: ' + str(e))
-            return None
+            try:
+                if 'https' in url:
+                    imageContent = urllib2.urlopen(url, context=unverifiedSSL).read()
+                    Log.Info('Falling back to unverified SSL: ' + url)
+                    return DataObject(imageContent, 'image/jpeg')
+            except Exception as e:
+                Log.Warn('Error retrieving image: ' + str(e))
+                return None
 
 
 # Search for metadata
