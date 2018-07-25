@@ -1,6 +1,7 @@
 {
     "preferences":              "Preferences",
     "channelsUnavailable":      "No channels available, verify settings.",
+    "recordingsUnavailable":    "No recordings available, check logs for errors.",
     "tvhAddress":               "Tvheadend address:port (with webroot if applicable):",
     "tvhUser":                  "Username:",
     "tvhPass":                  "Password:",
@@ -10,7 +11,7 @@
     "prefPageCount":            "Number of channels to display per page:",
     "prefEPGCount":             "Number of hours/entries of upcoming shows to display:",
     "prefMetadata":             "Display artwork and metadata from theTVDB and The Movie DB",
-    "prefDirectStream":         "Enable direct streaming (experimental)",
+    "prefDirectStream":         "Enable direct streaming",
     "next":                     "Next...",
     "recordings":               "Recordings"
 }

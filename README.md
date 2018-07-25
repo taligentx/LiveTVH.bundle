@@ -2,27 +2,34 @@
 LiveTVH provides live TV streaming for [Plex](https://plex.tv) via [Tvheadend](https://tvheadend.org), including metadata from Tvheadend's EPG, [theTVDB](https://thetvdb.com), and [The Movie DB](https://www.themoviedb.org).
 
 ## Features
-* Playback of Tvheadend video channels, audio channels, and recordings.
-* EPG displayed as a simple list within each channel description.
-* Metadata and artwork lookup from theTVDB (using EPG zap2it IDs if available) and The Movie DB.
-* Direct streaming (experimental, primarily tested with Plex Web and iOS).
+* Plays all Tvheadend video channels, audio channels, and recordings, including IPTV and ATSC/DVB sources.
+* Direct streaming when the codec and resolution of channels are set using Tvheadend channel tags.
+* Provides the Tvheadend EPG for channels in the Plex channel description.
+* Displays metadata and artwork from theTVDB (using EPG zap2it IDs if available) and The Movie DB.
+* Supports Tvheadend stable versions 4.2.x and unstable development versions 4.3.x.
 
 ## Release notes
+* 2018.07.25 - [LiveTVH 1.4](https://github.com/taligentx/LiveTVH.bundle/releases/tag/v1.4)
+  * New: Support both plain and digest authentication for Tvheadend HTTP authentication
+  * New: Channel artwork via HTTPS now falls back to SSL without authentication if necessary due to a [Plex issue](https://forums.plex.tv/t/https-broken/216635/8)
+  * Changed: Plex Web no longer supports direct streaming 256kbps audio, lowered specified audio bitrate for audio direct streaming
+  * Bugfix: Recordings failed to display when resolution was not set
+  * Bugfix: Plugin failed to respond if theTVDB metadata is enabled and thetvdb.com is unreachable
+  * Bugfix: Plugin failed to respond when accessing recordings if the Tvheadend recordings data contains invalid UTF-8 characters, added fallback to ISO-8859-1 characters
 
 * 2018.07.08 - [LiveTVH 1.3](https://github.com/taligentx/LiveTVH.bundle/releases/tag/v1.3)
-  * This pushes the pre-existing changes in the develop branch to master as a release.
-  * Updated: Tvheadend channel tags support additional codecs, resolutions, and radio (audio-only) channels
-  * Updated: Changed image filenames to match Plex channel guidelines
-  * Updated: Replaced deprecated string substitution per [#18](https://github.com/taligentx/LiveTVH.bundle/pull/18)
+  * Changed: Tvheadend channel tags support additional codecs, resolutions, and radio (audio-only) channels
+  * Changed: Changed image filenames to match Plex channel guidelines
+  * Changed: Replaced deprecated string substitution per [#18](https://github.com/taligentx/LiveTVH.bundle/pull/18)
 
 * 2017.05.22 - [LiveTVH 1.2](https://github.com/taligentx/LiveTVH.bundle/releases/tag/v1.2)
-  * New: Paginated channel lists with configurable # of items per page - this helps with longer channel lists (a necessity for IPTV providers with thousands of channels).
+  * New: Paginated channel lists with a configurable number of items per page - this helps with longer channel lists (a necessity for IPTV providers with thousands of channels).
   * New: Tvheadend recordings for playback - located at the end of the first page of the channel list (a display bug with several Plex clients prevents placing it at the beginning of the list).
   * New: Codec identification using Tvheadend channel tags (experimental).  This can enable direct streaming for H264-AAC streams on some clients (see setup notes below).
-  * Updated: EPG parser to improve support for IPTV sources, including using images for a show if specified in the EPG (if other metadata providers are not available or are missing artwork).
-  * Updated: EPG item limit to 20k items/20MB (again, for IPTV sources).
-  * Updated: Plex clients will now display channel thumbnails as video clip objects (widescreen thumbnails) if metadata providers are disabled.
-  * Updated: Code housekeeping (partially PEP8-conformant)
+  * Changed: EPG parser to improve support for IPTV sources, including using images for a show if specified in the EPG (if other metadata providers are not available or are missing artwork).
+  * Changed: EPG item limit to 20k items/20MB (again, for IPTV sources).
+  * Changed: Plex clients will now display channel thumbnails as video clip objects (widescreen thumbnails) if metadata providers are disabled.
+  * Changed: Code housekeeping (partially PEP8-conformant)
   * Bugfix: transcoding quality options not visible during playback
   * Bugfix: episode names from EPG were not set on Plex for Android
 
@@ -43,9 +50,9 @@ LiveTVH provides live TV streaming for [Plex](https://plex.tv) via [Tvheadend](h
 ![Plex iOS Screenshot](https://cloud.githubusercontent.com/assets/12835671/25927072/dbecdd3c-35b8-11e7-80d9-056e59088501.jpg)
 
 ## Setup
-1. [Download LiveTVH.bundle](https://github.com/taligentx/LiveTVH.bundle/releases/) and unzip to the [Plex Media Server/Plug-ins](https://support.plex.tv/hc/en-us/articles/201106098-How-do-I-find-the-Plug-Ins-folder-) directory.
-2. From the Tvheadend web interface, navigate to Configuration > Users > Passwords and create a user and password.
-3. Navigate to Configuration > Users > Access Entries and create a new access entry.
+1. [Download LiveTVH.bundle](https://github.com/taligentx/LiveTVH.bundle/releases/) and unzip to the [Plex Media Server/Plug-ins](https://support.plex.tv/hc/en-us/articles/201106098-How-do-I-find-the-Plug-Ins-folder-) directory.  Alternatively, `git clone` this respository to the Plug-ins directory to keep track of the latest changes.
+2. Open the Tvheadend web interface and navigate to Configuration > Users > Passwords.  Create a user and password.
+3. Navigate to Configuration > Users > Access Entries and create a new access entry for the user.
 4. Select "Web interface", Streaming > "Basic", and Video recorder > "Basic".
 
     ![Tvheadend Access Entry screenshot](https://user-images.githubusercontent.com/12835671/42663549-95fdfd76-85fb-11e8-8b02-b2022d8c6cff.png)
@@ -57,10 +64,10 @@ LiveTVH provides live TV streaming for [Plex](https://plex.tv) via [Tvheadend](h
 ## Notes
 * Channels will take a bit of time to load initially while metadata is fetched and speed up over time as the cache is built up and stored for 30 days.  Up to 30 channels per page works reasonably well.
 
-* Direct streaming of channels on Plex Web, iOS, and Roku requires identifying the channel's codecs and resolution using Tvheadend channel tags.  Create and set channel tags in Tvheadend as appropriate for each channel (Tvheadend supports editing multiple selections to make this a quick update):
+* Direct streaming of channels on Plex Web, iOS, Roku, and Android requires identifying the channel's codecs and resolution using Tvheadend channel tags.  Create and set channel tags in Tvheadend as appropriate for each channel:
   * Video tags: `H264`, `MPEG2`, `HEVC`, `VP8`, `VP9`
   * Audio tags: `AAC`, `AAC-LATM`, `AC3`, `EAC3`, `MP2`, `MP3`, `VORBIS`
-  * Video and audio tags may be combined into single tags: `H264-AAC`, `H264-MP2`, etc.
+  * Video and audio tags may be combined into single tags: `MPEG2-AC3`, `H264-AAC`, etc.
   * Video resolution tags: `HDTV`, `720p`, `SDTV`
 
   ![Tvheadend Channel Tags Screenshot](https://cloud.githubusercontent.com/assets/12835671/26338051/e0cb75dc-3f42-11e7-85a0-7af80e425a21.png)

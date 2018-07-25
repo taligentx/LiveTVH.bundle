@@ -1,9 +1,10 @@
 # LiveTVH - Live TV streaming for Plex via Tvheadend
 # https://github.com/taligentx/LiveTVH
 
-import base64
 import time
 import re
+import urllib2
+import ssl
 
 # Preferences
 #
@@ -14,24 +15,26 @@ import re
 improveTheTVDB = True
 
 # Cache times
-channelDataCacheTime = 60
-epgCacheTime = 4200
 imageCacheTime = CACHE_1MONTH
 tvdbRetryInterval = CACHE_1MONTH
+httpTimeout = 3
 
 # /Preferences
 
-liveTVHVersion = '1.3'
+liveTVHVersion = '1.4'
 TITLE = 'LiveTVH'
 PREFIX = '/video/livetvh'
 THUMB = 'icon-default.png'
 ART = 'art-default.jpg'
-tvhHeaders = None
+
 tvhAddress = None
 tvhReachable = False
 tvdbToken = None
 tmdbBaseURL = None
 tmdbGenreData = None
+unverifiedSSL = ssl.create_default_context()
+unverifiedSSL.check_hostname = False
+unverifiedSSL.verify_mode = ssl.CERT_NONE
 
 debug = True
 
@@ -49,21 +52,37 @@ def ValidatePrefs():
 # Setup authorization and configuration data
 @route(PREFIX + '/setprefs')
 def setPrefs():
-    global tvhHeaders
     global tvhAddress
     global tvhReachable
     global tvdbToken
     global tmdbBaseURL
     global tmdbGenreData
-
-    # Set Tvheadend authorization and verify connectivity to Tvheadend
-    tvhAuth = base64.b64encode('{}:{}'.format(Prefs['tvhUser'], Prefs['tvhPass']))
-    tvhHeaders = {'Authorization': 'Basic ' + str(tvhAuth)}
+    tvhRealm = None
+    tvhAuthType = None
+    tvhAuthHandler = urllib2.HTTPDigestAuthHandler()
     tvhAddress = Prefs['tvhAddress'].rstrip('/')
     tvhServerInfoURL = str(tvhAddress) + '/api/serverinfo'
 
+    # Gets the Tvheadend HTTP authentication type and realm
     try:
-        tvhInfoData = JSON.ObjectFromURL(url=tvhServerInfoURL, headers=tvhHeaders, values=None, cacheTime=1)
+        response = urllib2.urlopen(tvhServerInfoURL).info()
+    except urllib2.HTTPError as e:
+        tvhAuthInfo = e.info().getheader('WWW-Authenticate')
+
+        if 'Basic' in str(tvhAuthInfo):
+            tvhAuthHandler = urllib2.HTTPBasicAuthHandler()
+
+        tvhRealm = (re.search("realm=\"[^\"]*", tvhAuthInfo).group(0).split('"'))[1]
+        tvhAuthHandler.add_password(tvhRealm, tvhAddress, Prefs['tvhUser'], Prefs['tvhPass'])
+        tvhOpener = urllib2.build_opener(tvhAuthHandler)
+        urllib2.install_opener(tvhOpener)
+
+    except Exception as e:
+        Log.Info('Error accessing Tvheadend: ' + str(e))
+
+    # Checks for connectivity to Tvheadend
+    try:
+        tvhInfoData = JSON.ObjectFromString(urllib2.urlopen(tvhServerInfoURL).read())
         Log.Info('Tvheadend version: ' + tvhInfoData['sw_version'])
 
         if tvhInfoData['api_version'] >= 15:
@@ -75,14 +94,13 @@ def setPrefs():
     except Exception as e:
         Log.Critical('Error accessing Tvheadend: ' + str(e))
         tvhReachable = False
-        return
 
-    # Renew theTVDB authorization token if necessary
+    # Renews theTVDB authorization token if necessary
     if Prefs['prefMetadata'] and tvdbToken:
         tvdbToken = None
         tvdbAuth()
 
-    # Retrieve themovieDB base URL for images and genre list
+    # Retrieves themovieDB base URL for images and genre list
     if Prefs['prefMetadata']:
         tmdbConfigURL = 'https://api.themoviedb.org/3/configuration?api_key=0fd2136e80c47d0e371ee1af87eaedde'
         tmdbGenreURL = 'https://api.themoviedb.org/3/genre/movie/list?api_key=0fd2136e80c47d0e371ee1af87eaedde'
@@ -96,7 +114,7 @@ def setPrefs():
             Log.Warn('Error accessing themovieDB: ' + str(e))
 
 
-# Build the main menu
+# Builds the main menu
 @handler(PREFIX, TITLE)
 def MainMenu():
 
@@ -105,29 +123,29 @@ def MainMenu():
         Log.Debug('Platform: ' + str(Client.Platform))
         Log.Debug('OS: ' + str(Platform.OS) + ' ' + str(Platform.CPU))
 
-    # Request channel data from Tvheadend
+    # Requests channel data from Tvheadend
     tvhChannelsData = None
     tvhChannelsURL = str(tvhAddress) + '/api/channel/grid?start=0&limit=100000'
 
     if tvhReachable:
         try:
-            tvhChannelsData = JSON.ObjectFromURL(url=tvhChannelsURL, headers=tvhHeaders, values=None, cacheTime=channelDataCacheTime)
+            tvhChannelsData = JSON.ObjectFromString(urllib2.urlopen(tvhChannelsURL).read())
         except Exception as e:
             Log.Critical('Error retrieving Tvheadend channel data: ' + str(e))
 
-    # Display an error message to clients if Tvheadend is malfunctional
+    # Displays an error message to clients if Tvheadend is malfunctional
     if tvhChannelsData is None:
         errorContainer = ObjectContainer(title1=TITLE, no_cache=True)
         errorContainer.add(DirectoryObject(title=L('channelsUnavailable')))
         return errorContainer
 
-    # Request and set channel tags from Tvheadend
+    # Requests and sets channel tags from Tvheadend
     # Tags are used as a manual method to identify video/audio attributes for each channel
     tvhTagsData = None
     tvhTagsURL = str(tvhAddress) + '/api/channeltag/grid?start=0&limit=100000'
 
     try:
-        tvhTagsData = JSON.ObjectFromURL(url=tvhTagsURL, headers=tvhHeaders, values=None, cacheTime=channelDataCacheTime)
+        tvhTagsData = JSON.ObjectFromString(urllib2.urlopen(tvhTagsURL).read())
         if debug: Log.Debug('tvhTagsData: ' + str(tvhTagsData))
     except Exception as e:
         Log.Warn('Error retrieving Tvheadend channel tags data: ' + str(e))
@@ -197,17 +215,33 @@ def MainMenu():
     except Exception as e:
         Log.Warn('Error parsing Tvheadend channel tags data: ' + str(e))
 
-    # Request recordings from Tvheadend
+    # Request recordings data as UTF-8 with fallback to ISO-8859-1
     tvhRecordingsData = None
     tvhRecordingsURL = str(tvhAddress) + '/api/dvr/entry/grid_finished'
+    recordingsUTF8Encoding = True
 
-    try:
-        tvhRecordingsData = JSON.ObjectFromURL(url=tvhRecordingsURL, headers=tvhHeaders, values=None, cacheTime=channelDataCacheTime)
-        if int(tvhRecordingsData['total']) == 0:
-            tvhRecordingsData = None
+    while True:
+        try:
+            if recordingsUTF8Encoding:
+                recordingsEncoding = 'utf-8'
+            else:
+                recordingsEncoding = 'latin-1'
 
-    except Exception as e:
-        Log.Warn('Error retrieving Tvheadend recordings data: ' + str(e))
+            rawRecordingsData = urllib2.urlopen(tvhRecordingsURL).read()
+            rawRecordingsData = re.sub(r'[\x00-\x1f]', '', rawRecordingsData) # Strip control characters from recordings data (yep, this has actually happened)
+            tvhRecordingsData = JSON.ObjectFromString(rawRecordingsData, encoding=recordingsEncoding, max_size=20971520)
+            if tvhRecordingsData: break
+
+        except Exception as e:
+            if recordingsUTF8Encoding:
+                Log.Warn('Unable to retrieve Tvheadend recordings data as UTF-8, falling back to ISO-8859-1: ' + str(e))
+                recordingsUTF8Encoding = False
+            else:
+                Log.Warn('Error retrieving Tvheadend recordings data: ' + str(e))
+                break
+
+    if int(tvhRecordingsData['total']) == 0:
+        tvhRecordingsData = None
 
     # Set the number of EPG items to retrieve
     tvhEPGData = None
@@ -236,9 +270,9 @@ def MainMenu():
             else:
                 epgEncoding = 'latin-1'
 
-            rawEPGData = HTTP.Request(url=tvhEPGURL, headers=tvhHeaders, cacheTime=epgCacheTime, encoding=epgEncoding, values=None).content
+            rawEPGData = urllib2.urlopen(tvhEPGURL).read()
             rawEPGData = re.sub(r'[\x00-\x1f]', '', rawEPGData) # Strip control characters from EPG data (yep, this has actually happened)
-            tvhEPGData = JSON.ObjectFromString(rawEPGData, encoding='utf-8', max_size=20971520)
+            tvhEPGData = JSON.ObjectFromString(rawEPGData, encoding=epgEncoding, max_size=20971520)
             if tvhEPGData: break
 
         except Exception as e:
@@ -636,10 +670,10 @@ def channel(
                     parts = [PartObject(key=playbackURL,
                     streams = [
                         VideoStreamObject(codec=streamVideo,bitrate=8000,width=1280,height=720),
-                        AudioStreamObject(codec=streamAudio,bitrate=256)])],
+                        AudioStreamObject(codec=streamAudio,bitrate=192)])],
                     video_resolution = '720',
                     container = 'mpegts',
-                    bitrate = 8256,
+                    bitrate = 8192,
                     width = 1280,
                     height = 720,
                     duration = 86400000,
@@ -654,10 +688,10 @@ def channel(
                     parts = [PartObject(key=playbackURL,
                     streams = [
                         VideoStreamObject(codec=streamVideo,bitrate=2000,width=720,height=576),
-                        AudioStreamObject(codec=streamAudio,bitrate=256)])],
+                        AudioStreamObject(codec=streamAudio,bitrate=192)])],
                     video_resolution = '576',
                     container = 'mpegts',
-                    bitrate = 2256,
+                    bitrate = 2192,
                     width = 720,
                     height = 576,
                     duration = 86400000,
@@ -672,10 +706,10 @@ def channel(
                     parts = [PartObject(key=playbackURL,
                     streams = [
                         VideoStreamObject(codec=streamVideo,bitrate=11000,width=1920,height=1080),
-                        AudioStreamObject(codec=streamAudio,bitrate=256)])],
+                        AudioStreamObject(codec=streamAudio,bitrate=192)])],
                     video_resolution = '1080',
                     container = 'mpegts',
-                    bitrate = 11256,
+                    bitrate = 11192,
                     width = 1920,
                     height = 1080,
                     duration = 86400000,
@@ -786,7 +820,7 @@ def stream(streamURL):
     testURL = '{}{}'.format(tvhAddress, streamURL)
 
     try:
-        responseCode = HTTP.Request(testURL, headers=tvhHeaders, values=None, cacheTime=None, timeout=2).headers
+        tvhResponse = urllib2.urlopen(testURL).getcode()
         return IndirectResponse(MovieObject, key=playbackURL)
 
     except Exception as e:
@@ -800,21 +834,43 @@ def recordings(tvhVideoTags, tvhAudioTags, startCount=0):
     nextStartCount = startCount + int(Prefs['prefPageCount'])
     recordingsContainer = ObjectContainer(title1=L('recordings'), no_cache=True)
 
-    # Request recordings from Tvheadend
+    # Request recordings data as UTF-8 with fallback to ISO-8859-1
     tvhRecordingsData = None
     tvhRecordingsURL = str(tvhAddress) + '/api/dvr/entry/grid_finished'
+    recordingsUTF8Encoding = True
 
-    try:
-        tvhRecordingsData = JSON.ObjectFromURL(url=tvhRecordingsURL, headers=tvhHeaders, values=None, cacheTime=channelDataCacheTime)
-    except Exception as e:
-        Log.Warn('Error retrieving Tvheadend recordings data: ' + str(e))
+    while True:
+        try:
+            if recordingsUTF8Encoding:
+                recordingsEncoding = 'utf-8'
+            else:
+                recordingsEncoding = 'latin-1'
+
+            rawRecordingsData = urllib2.urlopen(tvhRecordingsURL).read()
+            rawRecordingsData = re.sub(r'[\x00-\x1f]', '', rawRecordingsData) # Strip control characters from recordings data (yep, this has actually happened)
+            tvhRecordingsData = JSON.ObjectFromString(rawRecordingsData, encoding=recordingsEncoding, max_size=20971520)
+            if tvhRecordingsData: break
+
+        except Exception as e:
+            if recordingsUTF8Encoding:
+                Log.Warn('Unable to retrieve Tvheadend recordings data as UTF-8, falling back to ISO-8859-1: ' + str(e))
+                recordingsUTF8Encoding = False
+            else:
+                Log.Warn('Error retrieving Tvheadend recordings data: ' + str(e))
+                break
+
+    # Display an error message to clients if there was an error retrieving recordings data
+    if tvhRecordingsData is None:
+        errorContainer = ObjectContainer(title1=TITLE, no_cache=True)
+        errorContainer.add(DirectoryObject(title=L('recordingsUnavailable')))
+        return errorContainer
 
     # Request channel data from Tvheadend
     tvhChannelsData = None
     tvhChannelsURL = str(tvhAddress) + '/api/channel/grid?start=0&limit=100000'
 
     try:
-        tvhChannelsData = JSON.ObjectFromURL(url=tvhChannelsURL, headers=tvhHeaders, values=None, cacheTime=channelDataCacheTime)
+        tvhChannelsData = JSON.ObjectFromString(urllib2.urlopen(tvhChannelsURL).read())
     except Exception as e:
         Log.Critical('Error retrieving Tvheadend channel data: ' + str(e))
 
@@ -824,6 +880,7 @@ def recordings(tvhVideoTags, tvhAudioTags, startCount=0):
         streamURL = '/' + tvhRecording['url']
         streamVideo = None
         streamAudio = None
+        streamResolution = None
         thumb = None
         fallbackThumb = None
         art = R(ART)
@@ -948,6 +1005,7 @@ def recordings(tvhVideoTags, tvhAudioTags, startCount=0):
                 streamURL=streamURL,
                 streamVideo=streamVideo,
                 streamAudio=streamAudio,
+                streamResolution=streamResolution,
                 thumb=thumb,
                 fallbackThumb=fallbackThumb,
                 art=art,
@@ -990,14 +1048,24 @@ def image(url=None, fallback=None):
 
         except Ex.HTTPError as e:
             if e.code == 404:
+                Log.Info('Missing artwork in theTVDB, fallback: ' + str(fallback))
                 if fallback == R(ART):
                     return Redirect(R(ART))
 
                 elif fallback:
                     if tvhAddress in fallback:
-                        imageContent = HTTP.Request(url=fallback, headers=tvhHeaders, cacheTime=imageCacheTime, values=None).content
+                        imageContent = urllib2.urlopen(fallback).read()
                     else:
-                        imageContent = HTTP.Request(url=fallback, cacheTime=imageCacheTime, values=None).content
+                        try:
+                            imageContent = HTTP.Request(url=fallback, timeout=httpTimeout, cacheTime=imageCacheTime, values=None).content
+                        except Exception as e:
+                            try:
+                                if 'https' in fallback:
+                                    imageContent = urllib2.urlopen(fallback, context=unverifiedSSL).read()
+                                    Log.Info('Falling back to unverified SSL: ' + fallback)
+
+                            except Exception as e:
+                                Log.Warn('Error retrieving fallback image: ' + str(e))
 
                     return DataObject(imageContent, 'image/jpeg')
 
@@ -1007,7 +1075,7 @@ def image(url=None, fallback=None):
             for tvdbImageResult in tvdbImageData['data']:
                 url = 'http://thetvdb.com/banners/' + str(tvdbImageResult['fileName'])
                 try:
-                    imageContent = HTTP.Request(url, cacheTime=imageCacheTime, values=None).content
+                    imageContent = HTTP.Request(url, timeout=httpTimeout, cacheTime=imageCacheTime, values=None).content
                     return DataObject(imageContent, 'image/jpeg')
                 except Exception as e:
                     Log.Warn('Error retrieving image: ' + str(e))
@@ -1015,7 +1083,7 @@ def image(url=None, fallback=None):
 
     elif tvhAddress in url:
         try:
-            imageContent = HTTP.Request(url=url, headers=tvhHeaders, cacheTime=imageCacheTime, values=None).content
+            imageContent = urllib2.urlopen(url).read()
             return DataObject(imageContent, 'image/jpeg')
         except Exception as e:
             Log.Warn('Error retrieving image: ' + str(e))
@@ -1026,11 +1094,17 @@ def image(url=None, fallback=None):
 
     else:
         try:
-            imageContent = HTTP.Request(url, cacheTime=imageCacheTime, values=None).content
+            imageContent = HTTP.Request(url, timeout=httpTimeout, cacheTime=imageCacheTime, values=None).content
             return DataObject(imageContent, 'image/jpeg')
         except Exception as e:
-            Log.Warn('Error retrieving image: ' + str(e))
-            return None
+            try:
+                if 'https' in url:
+                    imageContent = urllib2.urlopen(url, context=unverifiedSSL).read()
+                    Log.Info('Falling back to unverified SSL: ' + url)
+                    return DataObject(imageContent, 'image/jpeg')
+            except Exception as e:
+                Log.Warn('Error retrieving image: ' + str(e))
+                return None
 
 
 # Search for metadata
@@ -1091,11 +1165,11 @@ def tvdbAuth():
     tvdbHeaders = {'content-type': 'application/json'}
 
     try:
-        tvdbResponse = HTTP.Request(url=tvdbLoginURL, headers=tvdbHeaders, data=tvdbApiKeyJSON, cacheTime=1).content
+        tvdbResponse = HTTP.Request(url=tvdbLoginURL, headers=tvdbHeaders, timeout=httpTimeout, data=tvdbApiKeyJSON, cacheTime=1).content
         tvdbTokenData = JSON.ObjectFromString(tvdbResponse)
         tvdbToken = tvdbTokenData['token']
 
-    except Ex.HTTPError as e:
+    except Exception as e:
         Log.Warn('Failed to retrieve theTVDB authorization token: ' + str(e))
         tvdbToken = False
 
@@ -1143,7 +1217,13 @@ def tvdb(title, zap2itID, zap2itMissingID=None):
 
     elif not tvdbToken:
         Log.Info('theTVDB authorization failed.')
-        return {'poster': tvdbPosterSearchURL, 'fanart': tvdbFanartSearchURL}
+        return {
+          'poster': tvdbPosterSearchURL,
+          'fanart': tvdbFanartSearchURL,
+          'rating': tvdbRating,
+          'siteRating': tvdbSiteRating,
+          'genres': tvdbGenres,
+          'zap2itMissingID': zap2itMissingID}
 
     # Search using zap2it ID if available, otherwise search by name
     tvdbHeaders = {'Authorization' : 'Bearer %s' % tvdbToken}
