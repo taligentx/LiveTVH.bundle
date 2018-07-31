@@ -50,7 +50,7 @@ LiveTVH provides live TV streaming for [Plex](https://plex.tv) via [Tvheadend](h
 ![Plex iOS Screenshot](https://cloud.githubusercontent.com/assets/12835671/25927072/dbecdd3c-35b8-11e7-80d9-056e59088501.jpg)
 
 ## Setup
-1. [Download LiveTVH.bundle](https://github.com/taligentx/LiveTVH.bundle/releases/) and unzip to the [Plex Media Server/Plug-ins](https://support.plex.tv/hc/en-us/articles/201106098-How-do-I-find-the-Plug-Ins-folder-) directory.  Alternatively, `git clone` this respository to the Plug-ins directory to keep track of the latest changes.
+1. [Download LiveTVH.bundle](https://github.com/taligentx/LiveTVH.bundle/releases/) and unzip to the [Plex Media Server/Plug-ins](https://support.plex.tv/hc/en-us/articles/201106098-How-do-I-find-the-Plug-Ins-folder-) directory.  Alternatively, `git clone` this repository to the Plug-ins directory to keep track of the latest changes.
 2. Open the Tvheadend web interface and navigate to Configuration > Users > Passwords.  Create a user and password.
 3. Navigate to Configuration > Users > Access Entries and create a new access entry for the user.
 4. Select "Web interface", Streaming > "Basic", and Video recorder > "Basic".
